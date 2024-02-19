@@ -1,0 +1,337 @@
+---
+title: "Computation of indices in additional datasets"
+author: "Bente Theeuwes"
+date: "2023-11-23"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = F, message = F, warning = F)
+
+# Install libraries if not available (+ load)
+for (i in c('dplyr', 'ggplot2', 'here', 'fs', 'tibble', 'glmnet', 'rms', 'devtools', 'plotly')){
+  if(length(find.package(i, quiet = T)) == 0){
+    cat('Installing', i)
+    install.packages(i); library(i, character.only = T)
+  }
+}
+
+
+library(here)
+here::i_am("3-computation/2-computation-validation-data.Rmd")
+
+source(here("0-data", "src", "computeIndex.R"))
+source(here("0-data", "src", "adjust_age_ic.R"))
+
+```
+
+
+```{r}
+dataDir = "C:/Users/elisa/Documents/data local" # local path to data
+
+load(here("0-data", "data.Rdata"))
+db_path <- fs::path_expand('~/Dropbox')
+```
+
+# Script to compute three indices
+
+```{r}
+coef_buccal <- readRDS(here("2-training", "1-buccal", "index_coef.Rds"))
+scale_buccal <- readRDS(here("2-training", "1-buccal", "scale.Rds"))
+coef_cervical <- readRDS(here("2-training", "2-cervical", "index_coef.Rds"))
+scale_cervical <- readRDS(here("2-training", "2-cervical", "scale.Rds"))
+coef_blood <- readRDS(here("2-training", "3-blood", "index_coef.Rds"))
+scale_blood <- readRDS(here("2-training", "3-blood", "scale.Rds"))
+
+computeIndices <- function(beta, pheno){
+  
+  intersect <- intersect(colnames(beta), pheno$basename)
+  beta <- beta[,intersect]
+  pheno <- pheno[match(intersect, pheno$basename),]
+  
+  # buccal
+  pheno$WID_buccal_BC <- computeIndex(beta, w = coef_buccal, scaling = scale_buccal,
+                                name = 'WID-BC-buccal')
+  
+  # cervical
+  pheno$WID_cervical_BC <- computeIndex(beta, w = coef_cervical, scaling = scale_cervical,
+                                name = 'WID-BC-cervical')
+  
+  # blood
+  pheno$WID_blood_BC <- computeIndex(beta, w = coef_blood, scaling = scale_blood,
+                                name = 'WID-BC-blood')
+  
+  
+  return(pheno)
+}
+```
+
+
+## Additional breast dataset
+
+```{r}
+load(file.path(dataDir,"GSE225845","pheno_trimmed.Rdata"))
+load(file.path(dataDir,"GSE225845","qc","beta_merged.Rdata"))
+GSE225845_val <- computeIndices(beta_merged, pheno_trimmed)
+
+# Adjust scores for age and ic
+GSE225845_val <- adjust_age_ic(GSE225845_val,indices=c("WID_buccal_BC","WID_cervical_BC","WID_blood_BC",
+                                                       "WID_BC"),tissue=F)
+
+# save for plotting
+save(GSE225845_val, file=here("0-data","dataframes-plotting","GSE225845_validation.Rdata"))
+```
+
+
+
+
+```{r}
+
+
+breast_val |> 
+  ggplot(aes(x = type,
+             y = WID_cervical_BC)) +
+  geom_boxplot() + ggpubr::stat_compare_means(ref.group = 'normal',
+                             label = 'p.signif') 
+
+breast_val |> 
+  ggplot(aes(x = type,
+             y = WID_buccal_BC)) +
+  geom_boxplot()  + ggpubr::stat_compare_means(ref.group = 'normal',
+                             label = 'p.signif') 
+
+breast_val |> 
+  ggplot(aes(x = type,
+             y = WID_blood_BC)) +
+  geom_boxplot()  + ggpubr::stat_compare_means(ref.group = 'normal',
+                             label = 'p.signif') 
+
+
+
+
+
+```
+### AUC
+
+```{r}
+# Adjacent normal versus normal
+filtered_breast_val <- breast_val %>%
+  filter(type == "adj_norm" | type == "normal")
+
+pROC::roc(filtered_breast_val$type, filtered_breast_val$WID_buccal_BC) # 0.7145
+pROC::roc(filtered_breast_val$type, filtered_breast_val$WID_cervical_BC) # 0.5087
+pROC::roc(filtered_breast_val$type, filtered_breast_val$WID_blood_BC) # 0.7673
+
+# Tumor versus normal
+filtered_breast_val <- breast_val %>%
+  filter(type == "tumor" | type == "normal")
+
+pROC::roc(filtered_breast_val$type, filtered_breast_val$WID_buccal_BC) # 0.9102
+pROC::roc(filtered_breast_val$type, filtered_breast_val$WID_cervical_BC) # 0.8135
+pROC::roc(filtered_breast_val$type, filtered_breast_val$WID_blood_BC) # 0.5084
+
+# Tumor versus normal adjacent
+filtered_breast_val <- breast_val %>%
+  filter(type == "tumor" | type == "adj_norm")
+
+pROC::roc(filtered_breast_val$type, filtered_breast_val$WID_buccal_BC) # 0.8067
+pROC::roc(filtered_breast_val$type, filtered_breast_val$WID_cervical_BC) # 0.7838
+pROC::roc(filtered_breast_val$type, filtered_breast_val$WID_blood_BC) # 0.6914
+```
+
+
+### Age
+
+```{r}
+age_buccal <- ggplot(breast_val, aes(x = as.numeric(age), y = WID_buccal_BC, color = type)) +
+  geom_point(alpha=0.2,size=2) +  # Plot points
+  geom_smooth(method = "lm", se = TRUE, aes(group = type, fill=type)) +
+  labs(
+    y = "WID-BC-buccal index",
+    x = "Subject age"
+  ) +
+  stat_cor(method = "pearson", show.legend = FALSE, label.x.npc='left', label.y.npc='middle') 
+
+age_cervical <- ggplot(breast_val, aes(x = as.numeric(age), y = WID_cervical_BC, color = type)) +
+  geom_point(alpha=0.2,size=2) +  # Plot points
+  geom_smooth(method = "lm", se = TRUE, aes(group = type, fill=type)) +
+  labs(
+    y = "WID-BC-cervical index",
+    x = "Subject age"
+  ) +
+  stat_cor(method = "pearson", show.legend = FALSE, label.x.npc='left', label.y.npc='middle') 
+
+age_blood <- ggplot(breast_val, aes(x = as.numeric(age), y = WID_blood_BC, color = type)) +
+  geom_point(alpha=0.2,size=2) +  # Plot points
+  geom_smooth(method = "lm", se = TRUE, aes(group = type, fill=type)) +
+  labs(
+    y = "WID-BC-blood index",
+    x = "Subject age"
+  ) +
+  stat_cor(method = "pearson", show.legend = FALSE, label.x.npc='left', label.y.npc='middle') 
+
+age_buccal
+age_cervical
+age_blood
+```
+
+### IC
+
+```{r}
+ic_buccal <- ggplot(breast_val, aes(x = ic, y = WID_buccal_BC, color = type)) +
+  geom_point(alpha=0.2,size=2) +  # Plot points
+  geom_smooth(method = "lm", se = TRUE, aes(group = type, fill=type)) +
+  labs(
+    y = "WID-BC-buccal index",
+    x = "IC"
+  ) +
+  stat_cor(method = "pearson", show.legend = FALSE, label.x.npc='left', label.y.npc='middle') 
+
+ic_cervical <- ggplot(breast_val, aes(x = ic, y = WID_cervical_BC, color = type)) +
+  geom_point(alpha=0.2,size=2) +  # Plot points
+  geom_smooth(method = "lm", se = TRUE, aes(group = type, fill=type)) +
+  labs(
+    y = "WID-BC-cervical index",
+    x = "IC"
+  ) +
+  stat_cor(method = "pearson", show.legend = FALSE, label.x.npc='left', label.y.npc='middle') 
+
+ic_blood <- ggplot(breast_val, aes(x = ic, y = WID_blood_BC, color = type)) +
+  geom_point(alpha=0.2,size=2) +  # Plot points
+  geom_smooth(method = "lm", se = TRUE, aes(group = type, fill=type)) +
+  labs(
+    y = "WID-BC-blood index",
+    x = "IC"
+  ) +
+  stat_cor(method = "pearson", show.legend = FALSE, label.x.npc='left', label.y.npc='middle') 
+
+ic_buccal
+ic_cervical
+ic_blood
+```
+
+
+
+## Additional blood dataset
+
+```{r}
+load(file.path(dataDir,"GSE89093","pheno_trimmed.Rdata"))
+load(file.path(dataDir,"GSE89093","beta.Rdata"))
+blood_BC <- computeIndices(beta, pheno_trimmed)
+```
+Select only BC and matched controls
+
+```{r}
+# Filter rows where cancer_type is 'breast'
+breast_id <- blood_val %>%
+  filter(cancer_type == 'breast') 
+
+# Find matched controls of breast cancer cases
+blood_BC <- blood_val %>%
+  filter(cancer_type == 'breast' | twin_id %in% breast_id$twin_id) # 52 samples
+```
+
+```{r}
+
+
+blood_BC |> 
+  ggplot(aes(x = type,
+             y = WID_cervical_BC)) +
+  geom_boxplot() + ggpubr::stat_compare_means(ref.group = 'healthy',
+                             label = 'p.signif', paired = TRUE) 
+
+blood_BC |> 
+  ggplot(aes(x = type,
+             y = WID_buccal_BC)) +
+  geom_boxplot()  + ggpubr::stat_compare_means(ref.group = 'healthy',
+                             label = 'p.signif', paired = TRUE) 
+
+blood_BC |> 
+  ggplot(aes(x = type,
+             y = WID_blood_BC)) +
+  geom_boxplot()  + ggpubr::stat_compare_means(ref.group = 'healthy',
+                             label = 'p.signif', paired = TRUE) 
+
+
+
+```
+### AUC
+
+```{r}
+
+
+pROC::roc(blood_BC$type, blood_BC$WID_buccal_BC) # 0.5533
+pROC::roc(blood_BC$type, blood_BC$WID_cervical_BC) # 0.5266
+pROC::roc(blood_BC$type, blood_BC$WID_blood_BC) # 0.4778
+```
+
+
+### Age
+
+```{r}
+age_buccal <- ggplot(blood_BC, aes(x = as.numeric(age), y = WID_buccal_BC, color = type)) +
+  geom_point(alpha=0.2,size=2) +  # Plot points
+  geom_smooth(method = "lm", se = TRUE, aes(group = type, fill=type)) +
+  labs(
+    y = "WID-BC-buccal index",
+    x = "Subject age"
+  ) +
+  stat_cor(method = "pearson", show.legend = FALSE, label.x.npc='left', label.y.npc='middle') 
+
+age_cervical <- ggplot(blood_BC, aes(x = as.numeric(age), y = WID_cervical_BC, color = type)) +
+  geom_point(alpha=0.2,size=2) +  # Plot points
+  geom_smooth(method = "lm", se = TRUE, aes(group = type, fill=type)) +
+  labs(
+    y = "WID-BC-cervical index",
+    x = "Subject age"
+  ) +
+  stat_cor(method = "pearson", show.legend = FALSE, label.x.npc='left', label.y.npc='middle') 
+
+age_blood <- ggplot(blood_BC, aes(x = as.numeric(age), y = WID_blood_BC, color = type)) +
+  geom_point(alpha=0.2,size=2) +  # Plot points
+  geom_smooth(method = "lm", se = TRUE, aes(group = type, fill=type)) +
+  labs(
+    y = "WID-BC-blood index",
+    x = "Subject age"
+  ) +
+  stat_cor(method = "pearson", show.legend = FALSE, label.x.npc='left', label.y.npc='middle') 
+
+age_buccal
+age_cervical
+age_blood
+```
+
+### Neutrophils
+
+```{r}
+ic_buccal <- ggplot(blood_BC, aes(x = Neu, y = WID_buccal_BC, color = type)) +
+  geom_point(alpha=0.2,size=2) +  # Plot points
+  geom_smooth(method = "lm", se = TRUE, aes(group = type, fill=type)) +
+  labs(
+    y = "WID-BC-buccal index",
+    x = "Neutrophils"
+  ) +
+  stat_cor(method = "pearson", show.legend = FALSE, label.x.npc='left', label.y.npc='middle') 
+
+ic_cervical <- ggplot(blood_BC, aes(x = Neu, y = WID_cervical_BC, color = type)) +
+  geom_point(alpha=0.2,size=2) +  # Plot points
+  geom_smooth(method = "lm", se = TRUE, aes(group = type, fill=type)) +
+  labs(
+    y = "WID-BC-cervical index",
+    x = "Neutrophils"
+  ) +
+  stat_cor(method = "pearson", show.legend = FALSE, label.x.npc='left', label.y.npc='middle') 
+
+ic_blood <- ggplot(blood_BC, aes(x = Neu, y = WID_blood_BC, color = type)) +
+  geom_point(alpha=0.2,size=2) +  # Plot points
+  geom_smooth(method = "lm", se = TRUE, aes(group = type, fill=type)) +
+  labs(
+    y = "WID-BC-blood index",
+    x = "Neutrophils"
+  ) +
+  stat_cor(method = "pearson", show.legend = FALSE, label.x.npc='left', label.y.npc='middle') 
+
+ic_buccal
+ic_cervical
+ic_blood
+```

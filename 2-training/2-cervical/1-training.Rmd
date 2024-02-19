@@ -1,0 +1,497 @@
+---
+title: "Training on cervical samples"
+author: "Chiara Herzog"
+date: "2023-11-16"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = F, message = F, warning = F)
+
+# Install libraries if not available (+ load)
+for (i in c('dplyr', 'ggplot2', 'here', 'fs', 'tibble', 'glmnet', 'rms', 'devtools', 'plotly')){
+  if(length(find.package(i, quiet = T)) == 0){
+    cat('Installing', i)
+    install.packages(i); library(i, character.only = T)
+  }
+}
+
+if(length(find.package('eutopsQC', quiet = T)) == 0){
+    cat('Installing', i)
+    devtools::install_github('chiaraherzog/eutopsQC'); library(i, character.only = T)
+}
+
+library(here)
+here::i_am("2-training/1-buccal/1-training.Rmd")
+
+# Source scripts
+source(here("0-data", "src", "el-classifier.R"))
+source(here("0-data", "src", "train-linear-classifier.R"))
+
+# Variables
+setname = 'discovery_cervical'
+sampletypename = 'cervical'
+foldername <- '2-cervical'
+```
+
+
+```{r}
+# Load data
+load(here("0-data", "data.Rdata"))
+db_path <- fs::path_expand('~/Dropbox')
+load(here(db_path, "data", "3c", "beta_merged.Rdata"))
+
+# Load EWAS results
+db <- readRDS(here("1-ewas", foldername, "delta-beta.Rds"))
+
+# Load mapping compatible
+v1v2 <- eutopsQC::mapping_compatible_v1v2
+```
+
+# Overview
+
+* Training is done on
+  + top pval
+  + top db_epi
+  + top db_imm
+  + combined (ranked)
+  + entire beta matrix (lasso only)
+  
+* Each training step has lasso, ridge, elastic net (alpha = 0.5)
+
+## Prepare db
+
+```{r}
+db <- as.data.frame(db) |> 
+  tibble::rownames_to_column('cg') |> 
+  dplyr::filter(cg %in% v1v2$EPICv1_Loci)
+```
+
+## Prepare pheno
+
+```{r}
+pheno_tr <- droplevels(data[data$set == setname & data$subset == 'training' & data$sampletype == sampletypename,]) |> 
+  dplyr::mutate(type = factor(type, levels = c("Control", "BC case")))
+
+pheno_val <- droplevels(data[data$set == setname & data$subset == 'internal_validation' & data$sampletype == sampletypename,]) |> 
+  dplyr::mutate(type = factor(type, levels = c("Control", "BC case")))
+```
+
+# Training
+
+```{r}
+n.seq <- c(2, 5, 10, 20, 25, 50, 75, 100, 200, 500,seq(1000,30000,by=1000))
+```
+
+## P value
+
+* Keep top 30.000
+
+```{r}
+# Input cpg list
+cg_input <- db |> 
+  dplyr::arrange(type) |> 
+  dplyr::slice(1:30000) |> 
+  dplyr::pull(cg)
+
+# Beta subsets
+beta_tr <- beta_merged[cg_input,pheno_tr$basename]
+beta_val <- beta_merged[cg_input,pheno_val$basename]
+
+if(!identical(colnames(beta_tr), pheno_tr$basename)){
+  stop('names not overlapping')
+}
+
+if(!identical(colnames(beta_val), pheno_val$basename)){
+  stop('names not overlapping')
+}
+
+
+# Train index
+res_ridge <- train_linear_classifier(beta_tr = beta_tr,
+                                     type_tr = pheno_tr$type,
+                                     beta_val = beta_val,
+                                     type_val = pheno_val$type,
+                                     alpha = 0,
+                                     n_seq = n.seq,
+                                     lambda = "unrestricted")
+
+save(res_ridge, file = here("2-training", foldername, "res_ridge_p.Rdata"))
+
+res_lasso <- train_linear_classifier(beta_tr = beta_tr,
+                                     type_tr = pheno_tr$type,
+                                     beta_val = beta_val,
+                                     type_val = pheno_val$type,
+                                     alpha = 1,
+                                     n_seq = n.seq,
+                                     lambda = "unrestricted")
+
+save(res_lasso, file = here("2-training", foldername, "res_lasso_p.Rdata"))
+rm(beta_tr, beta_val, res_lasso, res_ridge);gc()
+```
+
+
+## db_epi
+
+```{r}
+# Input cpg list
+cg_input <- db |> 
+  dplyr::arrange(desc(abs(db_epithelial))) |> 
+  dplyr::slice(1:30000) |> 
+  dplyr::pull(cg)
+
+# Beta subsets
+beta_tr <- beta_merged[cg_input,pheno_tr$basename]
+beta_val <- beta_merged[cg_input,pheno_val$basename]
+
+if(!identical(colnames(beta_tr), pheno_tr$basename)){
+  stop('names not overlapping')
+}
+
+if(!identical(colnames(beta_val), pheno_val$basename)){
+  stop('names not overlapping')
+}
+
+
+# Train index
+res_ridge <- train_linear_classifier(beta_tr = beta_tr,
+                                     type_tr = pheno_tr$type,
+                                     beta_val = beta_val,
+                                     type_val = pheno_val$type,
+                                     alpha = 0,
+                                     n_seq = n.seq,
+                                     lambda = "unrestricted")
+
+save(res_ridge, file = here("2-training", foldername, "res_ridge_epi.Rdata"))
+
+res_lasso <- train_linear_classifier(beta_tr = beta_tr,
+                                     type_tr = pheno_tr$type,
+                                     beta_val = beta_val,
+                                     type_val = pheno_val$type,
+                                     alpha = 1,
+                                     n_seq = n.seq,
+                                     lambda = "unrestricted")
+
+save(res_lasso, file = here("2-training", foldername, "res_lasso_epi.Rdata"))
+rm(beta_tr, beta_val, res_lasso, res_ridge);gc()
+```
+
+
+## db_imm
+
+```{r}
+# Input cpg list
+cg_input <- db |> 
+  dplyr::arrange(desc(abs(db_immune))) |> 
+  dplyr::slice(1:30000) |> 
+  dplyr::pull(cg)
+
+# Beta subsets
+beta_tr <- beta_merged[cg_input,pheno_tr$basename]
+beta_val <- beta_merged[cg_input,pheno_val$basename]
+
+if(!identical(colnames(beta_tr), pheno_tr$basename)){
+  stop('names not overlapping')
+}
+
+if(!identical(colnames(beta_val), pheno_val$basename)){
+  stop('names not overlapping')
+}
+
+
+# Train index
+res_ridge <- train_linear_classifier(beta_tr = beta_tr,
+                                     type_tr = pheno_tr$type,
+                                     beta_val = beta_val,
+                                     type_val = pheno_val$type,
+                                     alpha = 0,
+                                     n_seq = n.seq,
+                                     lambda = "unrestricted")
+
+save(res_ridge, file = here("2-training", foldername, "res_ridge_imm.Rdata"))
+
+res_lasso <- train_linear_classifier(beta_tr = beta_tr,
+                                     type_tr = pheno_tr$type,
+                                     beta_val = beta_val,
+                                     type_val = pheno_val$type,
+                                     alpha = 1,
+                                     n_seq = n.seq,
+                                     lambda = "unrestricted")
+
+save(res_lasso, file = here("2-training", foldername, "res_lasso_imm.Rdata"))
+rm(beta_tr, beta_val, res_lasso, res_ridge);gc()
+```
+
+
+## combined
+
+
+```{r}
+cg_input_epi <- db |> 
+  dplyr::arrange(desc(abs(db_epithelial))) |> 
+  dplyr::slice(1:30000) |> 
+  dplyr::pull(cg)
+
+cg_input_imm <- db |> 
+  dplyr::arrange(desc(abs(db_immune))) |> 
+  dplyr::slice(1:30000) |> 
+  dplyr::pull(cg)
+   
+
+# no of CpGs
+n <- 30000
+
+# all CpG names
+cg_names <- rep(NA, 2*n)
+cg_names[seq(1,2*n,by=2)] <- cg_input_epi
+cg_names[seq(2,2*n,by=2)] <- cg_input_imm
+   
+# Take the unique CpG names
+cpg_input <- unique(cg_names)[1:30000]
+
+# Beta subsets
+beta_tr <- beta_merged[cg_input,pheno_tr$basename]
+beta_val <- beta_merged[cg_input,pheno_val$basename]
+
+if(!identical(colnames(beta_tr), pheno_tr$basename)){
+  stop('names not overlapping')
+}
+
+if(!identical(colnames(beta_val), pheno_val$basename)){
+  stop('names not overlapping')
+}
+
+
+# Train index
+res_ridge <- train_linear_classifier(beta_tr = beta_tr,
+                                     type_tr = pheno_tr$type,
+                                     beta_val = beta_val,
+                                     type_val = pheno_val$type,
+                                     alpha = 0,
+                                     n_seq = n.seq,
+                                     lambda = "unrestricted")
+
+save(res_ridge, file = here("2-training", foldername, "res_ridge_combined.Rdata"))
+
+res_lasso <- train_linear_classifier(beta_tr = beta_tr,
+                                     type_tr = pheno_tr$type,
+                                     beta_val = beta_val,
+                                     type_val = pheno_val$type,
+                                     alpha = 1,
+                                     n_seq = n.seq,
+                                     lambda = "unrestricted")
+
+save(res_lasso, file = here("2-training", foldername, "res_lasso_combined.Rdata"))
+rm(beta_tr, beta_val, res_lasso, res_ridge);gc()
+```
+
+## Entire beta matrix
+
+
+```{r}
+beta_tr <- beta_merged[,pheno_tr$basename]
+beta_val <- beta_merged[,pheno_val$basename]
+
+if(!identical(colnames(beta_tr), pheno_tr$basename)){
+  stop('names not overlapping')
+}
+
+if(!identical(colnames(beta_val), pheno_val$basename)){
+  stop('names not overlapping')
+}
+
+res_lasso <- el_classifier(beta_tr = beta_tr,
+                           type_tr = pheno_tr$type,
+                           beta_val = beta_val,
+                           type_val = pheno_val$type,
+                           alpha = 1,
+                           lambda = "unrestricted")
+
+res_lasso$oob_auc
+res_lasso$val_roc
+save(res_lasso, file =  here("2-training", foldername, "res_lasso_entirebeta.Rdata"))
+```
+
+# Evaluate performances {.tabset .tabset-fade}
+
+## Internal validation set AUC
+
+```{r fig.align = "center", fig.width = 10, fig.height = 4.5}
+source(here("0-data", "src", "plot_performance_comparisons.R"))
+
+load(here("2-training", foldername, "res_ridge_epi.Rdata"))
+load(here("2-training", foldername, "res_lasso_epi.Rdata"))
+ridge_epi <- combine_sets(res_ridge, "Ridge - Epithelial", type = 'all')
+lasso_epi <- combine_sets(res_lasso, "Lasso - Epithelial", type = 'all')
+
+load(here("2-training", foldername, "res_ridge_imm.Rdata"))
+load(here("2-training", foldername, "res_lasso_imm.Rdata"))
+ridge_imm <- combine_sets(res_ridge, "Ridge - Immune", type = 'all')
+lasso_imm <- combine_sets(res_lasso, "Lasso - Immune", type = 'all')
+
+load(here("2-training", foldername, "res_ridge_combined.Rdata"))
+load(here("2-training", foldername, "res_lasso_combined.Rdata"))
+ridge_combined <- combine_sets(res_ridge, "Ridge - Combined", type = 'all')
+lasso_combined <- combine_sets(res_lasso, "Lasso - Combined", type = 'all')
+
+load(here("2-training", foldername, "res_ridge_p.Rdata"))
+load(here("2-training", foldername, "res_lasso_p.Rdata"))
+ridge_p <- combine_sets(res_ridge, "Ridge - pval", type = 'all')
+lasso_p <- combine_sets(res_lasso, "Lasso - pval", type = 'all')
+
+pdat <- rbind(ridge_epi, lasso_epi, ridge_imm, lasso_imm, ridge_combined, lasso_combined, ridge_p, lasso_p)
+pdat <- as.data.frame(pdat)
+
+pdat$n <- as.numeric(pdat$n)
+pdat$AUC_val <- as.numeric(pdat$AUC_val)
+pdat$AUC_oob <- as.numeric(pdat$AUC_oob)
+pdat$AUC_tr <- as.numeric(pdat$AUC_tr)
+pdat$Type <- factor(pdat$Type, levels = c("Ridge - Combined", "Lasso - Combined", "Ridge - Epithelial", "Lasso - Epithelial", "Ridge - Immune", "Lasso - Immune", "Ridge - pval", "Lasso - pval"))
+
+plotly::ggplotly(plot_performance_compare(pdat, pdat$AUC_val, sets = 8))
+
+# save for plotting
+save(pdat, file=here("0-data","dataframes-plotting","cervical-training.Rdata"))
+
+pdat <- pdat[order(pdat$AUC_val,decreasing = TRUE),]
+head(pdat)
+```
+
+Max: n = 15000 for Ridge pval Ridge (AUC_val = `r signif(pdat[which.max(pdat$AUC_val),]$AUC_val)`) 
+
+### Out-of-bag estimate AUC
+
+```{r fig.align = "center", fig.width = 10, fig.height = 4.5}
+plotly::ggplotly(plot_performance_compare(pdat, pdat$AUC_oob, sets = 8))
+
+pdat <- pdat[order(pdat$AUC_oob,decreasing = TRUE),]
+head(pdat)
+```
+
+* max oob at n=30000 for Ridge pval (AUC_oob = `r signif(pdat[which.max(pdat$AUC_oob),]$AUC_oob)`) 
+
+
+## Slope versus AUC
+
+```{r}
+p <- pdat |> 
+  ggplot(aes(x = as.numeric(Slope),
+             y = AUC_oob,
+             colour = Type,
+             label = n)) +
+  geom_point() +
+  coord_cartesian(xlim = c(0, 2),
+                  ylim = c(0.5, 1))
+plotly::ggplotly(p)
+
+
+p <- pdat |> 
+  ggplot(aes(x = as.numeric(Slope),
+             y = AUC_val,
+             colour = Type,
+             label = n)) +
+  geom_point() +
+  coord_cartesian(xlim = c(0, 2),
+                  ylim = c(0.5, 1))
+plotly::ggplotly(p)
+
+p <- pdat |> 
+  ggplot(aes(x = as.numeric(intercept),
+             y = AUC_val,
+             colour = Type,
+             label = n)) +
+  geom_point() +
+  coord_cartesian(xlim = c(0, 2),
+                  ylim = c(0.5, 1))
+plotly::ggplotly(p)
+```
+
+
+##  Whole beta lasso: Lambda versus AUC
+
+```{r fig.align = "center", fig.width = 7, fig.height = 3.5}
+load(here("2-training", foldername, "res_lasso_entirebeta.Rdata"))
+plot(res_lasso$fit.cv)
+```
+
+AUC val = `r res_lasso$val_roc`
+ 
+## Whole beta lasso: Validation set ROC curve
+
+```{r fig.align = "center", fig.width = 3.5, fig.height = 3.5}
+plot(res_lasso$val_roc)
+```
+
+The area under the curve (internal validation set) is `r res_lasso$val_roc$auc` (OOB AUC is `r res_lasso$oob_auc`).
+ 
+
+# Finalize training
+
+* Lasso/Ridge have similar AUC in int val, slight difference in oob
+* Slope is better for lasso, but lasso is less 'stable'
+* Choosing n = 30,000 for ridge pval to finalise index
+
+```{r}
+# Input cpg list
+cg_input <- db |> 
+  dplyr::arrange(type) |> 
+  dplyr::slice(1:30000) |> 
+  dplyr::pull(cg)
+
+# Pheno (entire discovery set)
+pheno <- droplevels(data[data$set == setname & data$sampletype == sampletypename,]) |> 
+  dplyr::mutate(type = factor(type, levels = c("Control", "BC case")))
+
+# Beta (entire discovery set)
+beta <- beta_merged[cg_input,pheno$basename]
+
+if(!identical(colnames(beta), pheno$basename)){
+  stop('names not overlapping')
+}
+
+res <- el_classifier(beta_tr = beta,
+                     type_tr = pheno$type,
+                     beta_val = beta,
+                     type_val = pheno$type,
+                     alpha = 0,
+                     lambda = "unrestricted")
+save(res, file = here("2-training", foldername, "res_final.Rdata"))
+
+index_coef <- coef(res$fit.cv, s = "lambda.min")
+names <- rownames(index_coef)
+index_coef <- as.numeric(index_coef)
+names(index_coef) <- names
+index_coef <- index_coef[index_coef!=0]
+index_coef <- index_coef[-1]
+index_coef
+
+hist(index_coef)
+saveRDS(index_coef, file=here("2-training", foldername, "index_coef.Rds"))
+```
+
+## Scale
+
+```{r}
+index <- readRDS(here("2-training", foldername, "index_coef.Rds"))
+ind <- na.omit(match(names(index), rownames(beta)))
+b <- beta[ind,]
+
+ind <- na.omit(match(rownames(b), names(index)))
+w <- index[ind] 
+
+if(!identical(names(w), rownames(b))){
+  stop('***names mismatch***')
+}
+
+scale <- colSums(b*w, na.rm = TRUE)
+
+pheno$scale <- scale
+
+pheno |> 
+  ggplot(aes(x = type,
+             y = scale)) +
+  geom_boxplot()
+
+# save the output as 'scale' as this will be needed for the final index computation
+saveRDS(scale, file = here("2-training", foldername, "scale.Rds"))
+```

@@ -1,0 +1,353 @@
+---
+title: "Download additional validation data"
+author: "Chiara Herzog"
+date: "2023-11-16"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = F, message = F, warning = F)
+
+# Install libraries if not available (+ load)
+for (i in c('dplyr', 'ggplot2', 'here', 'fs', 'tibble', 'glmnet', 'rms', 'devtools', 'plotly','GEOquery')){
+  if(length(find.package(i, quiet = T)) == 0){
+    cat('Installing', i)
+    install.packages(i); library(i, character.only = T)
+  }
+}
+
+
+library(here)
+library(eutopsQC)
+library(GEOquery)
+library(dplyr)
+library(EpiDISH)
+library(ChAMP)
+
+here::i_am("3-computation/2-computation-validation-data.Rmd")
+
+source(here("0-data", "src", "computeIndex.R"))
+source(here("0-data", "src", "adjust_age_ic.R"))
+
+load(here("0-data", "data.Rdata"))
+
+
+
+```
+
+# Helper functions and settings
+
+```{r}
+# Path where data will be downloaded to, locally - change to own folder
+dataDir = "C:/Users/elisa/Documents/data local" 
+
+# Function to unzip GEO files
+unpack_GEO <- function(dataDir, GSE) {
+  # Set path to data
+  setwd(file.path(dataDir, GSE))
+  
+  # Get the list of files in the directory
+  files <- list.files()
+  
+  # Get the file that ends with "_RAW.tar"
+  tarFile <- files[grepl("_RAW.tar$", files)]
+  
+  # Unzip the raw data
+  untar(tarFile)
+  
+  # Get the updated list of files
+  files <- list.files()
+  
+  # Filter out file names that end with "_RAW.tar"
+  filtered_files <- files[!grepl("_RAW.tar$", files)]
+  
+  # Filter out file names that do not end with ".gz"
+  gz_files <- filtered_files[grep("\\.gz$", filtered_files)]
+  
+  # Print the filtered list of .gz file names for visual check
+  print(gz_files)
+  
+  # Iteratively unpack the files
+  for (fileNr in 1:length(gz_files)) {
+    gunzip(gz_files[fileNr], remove = TRUE)
+  }
+}
+```
+
+
+
+# Wang dataset
+
+## Retrieve files from GEO
+
+```{r}
+GSE <- "GSE237036"
+
+gse <- getGEO(GSE)
+getGEOSuppFiles(GSE,makeDirectory = T,baseDir = file.path(dataDir)) # Get files from GEO
+
+unpack_GEO(dataDir,GSE)
+
+pheno <- pData(gse$GSE237036_series_matrix.txt.gz) # Pheno file
+save(pheno,file=file.path(dataDir,GSE,"GSE237036_pheno.Rdata")) # Save locally 
+```
+
+## Process files
+
+```{r}
+# Create 'pheno_trimmed' dataframe for QC
+pheno_trimmed <- pheno %>%
+  # Selects only the case/control column and supplementary_file.1
+  select("disease state:ch1", "supplementary_file.1") 
+
+pheno_trimmed$type <- pheno_trimmed$`disease state:ch1`
+pheno_trimmed <- pheno_trimmed %>%
+  # Extract the desired part from 'supplementary_file.1' aka basename
+  mutate(basename = sub('.*/(GSM\\d+_\\d+_R\\d+C\\d+).*', '\\1', supplementary_file.1))
+pheno_trimmed$supplementary_file.1 <- NULL
+pheno_trimmed$`disease state:ch1` <- NULL
+
+# Rename case and control
+pheno_trimmed <- pheno_trimmed %>%
+  mutate(type = ifelse(type == 'BC', 'BC case', type),
+         type = ifelse(type == 'normal', 'Control', type))
+
+save(pheno_trimmed,file=file.path(dataDir,GSE,"GSE237036_pheno_trimmed.Rdata")) # Save locally 
+```
+
+## QC
+
+```{r}
+# Create the 'qc' directory
+dir.create(file.path(dataDir,GSE, "qc"), showWarnings = FALSE)
+
+# Set paths
+phenoPath = file.path(dataDir,GSE,"GSE237036_pheno_trimmed.Rdata") # Pheno file
+inputDir = file.path(dataDir,GSE)
+outputDir = file.path(dataDir,GSE, "qc")
+
+# QC
+preprocessData(input=inputDir, output=outputDir, report=outputDir,pheno=phenoPath)
+writeLines(capture.output(sessionInfo()), "~/Desktop/sessionInfo.txt")
+```
+
+## Cell type heterogeneity
+
+```{r}
+
+load(file.path(dataDir,GSE,"beta_merged.Rdata"))
+
+# EpiDISH 
+frac.m <- hepidish(beta.m = beta_merged,
+                   ref1.m = centEpiFibIC.m,
+                   ref2.m = centBloodSub.m,
+                   h.CT.idx = 3,
+                   method = 'RPC',
+                   maxit = 500)
+
+
+pheno_trimmed <- cbind(pheno_trimmed, frac.m)
+
+colnames(pheno_trimmed) <- c("type", "basename","epi", "fib", "hepidish_B", "hepidish_NK","hepidish_CD4T","hepidish_CD8T","hepidish_Mono","hepidish_Neutro","hepidish_Eosino" )
+
+
+
+pheno_trimmed$set <- "validation_blood"
+pheno_trimmed$subset <- "GSE237036"
+
+save(pheno_trimmed,file=file.path(dataDir,GSE,"GSE237036_pheno_trimmed.Rdata")) # Save locally 
+```
+
+
+## Add to master dataframe
+
+```{r}
+load(here("0-data", "data.Rdata")) # Load master dataframe
+load(file.path(dataDir,"GSE237036","GSE237036_pheno_trimmed.Rdata")) # Load pheno
+
+# Merge data frames by matching column names
+data <- merge(data, pheno_trimmed, by = intersect(names(data), names(pheno_trimmed)), all.x = TRUE, all.y=TRUE)
+
+```
+
+
+# TCGA
+
+# Additional breast versus normal adjacent dataset
+
+GSE225845
+
+## Retrieve files from GEO
+
+```{r settings}
+GSE <- "GSE225845"
+
+gse <- getGEO(GSE)
+getGEOSuppFiles(GSE,makeDirectory = T,baseDir = file.path(dataDir)) # Get files from GEO
+unpack_GEO(dataDir, GSE) # Unpack 
+
+# Pheno 
+pheno <- pData(gse$GSE225845_series_matrix.txt.gz)
+save(pheno,file=file.path(dataDir,GSE,"pheno_raw.Rdata")) # Save locally 
+```
+
+## Process files
+
+```{r}
+# Rename columns in the pheno dataframe
+pheno$type <- NULL
+pheno_trimmed <- pheno %>%
+  rename(basename = 'methylation id (basenames):ch1',
+    sex = 'Sex:ch1',
+    type = 'sample type:ch1',
+    race = 'race:ch1',
+    grade = 'grade:ch1',
+    er = 'er status:ch1',
+    diabetes = 'diabetes:ch1',
+    stage = 'ajcc stage:ch1',
+    age = 'age_at_surgery:ch1'
+  )
+
+pheno_trimmed <- pheno_trimmed %>%
+  select(basename, type, sex, race, grade, er, diabetes, stage, age)
+rownames(pheno_trimmed) <- paste(rownames(pheno_trimmed), pheno_trimmed$basename, sep = "_")
+pheno_trimmed$basename <- rownames(pheno_trimmed)
+pheno_trimmed$age <- as.numeric(pheno_trimmed$age)
+
+save(pheno_trimmed,file=file.path(dataDir,GSE,"pheno_trimmed.Rdata")) # Save locally 
+```
+
+## QC
+
+```{r}
+# Create the 'qc' directory
+dir.create(file.path(dataDir,GSE, "qc"), showWarnings = FALSE)
+
+# Set paths
+phenoPath = file.path(dataDir,GSE,"pheno_trimmed.Rdata") # Pheno file
+inputDir = file.path(dataDir,GSE)
+outputDir = file.path(dataDir,GSE, "qc")
+
+# QC
+preprocessData(input=inputDir, output=outputDir, report=outputDir,pheno=phenoPath)
+writeLines(capture.output(sessionInfo()), "~/Desktop/sessionInfo.txt")
+```
+
+## Cell type heterogeneity
+
+```{r}
+
+load(file.path(dataDir,"GSE225845","qc","beta_merged.Rdata"))
+load(here("0-data","src","cent12CT.m.rda"))
+load(file.path(dataDir,"GSE225845","pheno_trimmed.Rdata"))
+
+# EpiDISH 
+frac.m <- hepidish(beta.m = beta_merged,
+                   ref1.m = centEpiFibIC.m,
+                   ref2.m = cent12CT.m,
+                   h.CT.idx = 3,
+                   method = 'RPC',
+                   maxit = 500)
+
+pheno_trimmed <- cbind(pheno_trimmed, frac.m)
+pheno_trimmed$ic <- rowSums(frac.m[, 3:ncol(frac.m)])
+
+save(pheno_trimmed,file=file.path(dataDir,GSE,"pheno_trimmed.Rdata")) # Save locally 
+```
+
+
+
+
+
+
+
+
+
+# Blood samples in cancer discordant monozygotic twin-pairs
+
+[GEO Accession (GSE89093)](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE89093)
+
+## Retrieve files from GEO
+
+```{r settings}
+GSE <- "GSE89093"
+
+gse <- getGEO(GSE)
+getGEOSuppFiles(GSE,makeDirectory = T,baseDir = file.path(dataDir)) # Get files from GEO
+unpack_GEO(dataDir, GSE) # Unpack 
+
+# Pheno 
+pheno <- pData(gse$GSE89093_series_matrix.txt.gz)
+save(pheno,file=file.path(dataDir,GSE,"pheno_raw.Rdata")) # Save locally 
+
+```
+
+
+## Process files
+
+```{r}
+# Create 'pheno_trimmed' dataframe for QC
+pheno$type <- NULL
+pheno_trimmed <- pheno %>%
+  rename(beadchip = "beadchip and order on beadchip (sentrix id):ch1",
+    type = "cancer status:ch1",
+    twin_id = "twin pair id:ch1",
+    cancer_type = "cancer location:ch1",
+    age= "age at blood sample:ch1",
+    basename= "description"
+  )
+
+pheno_trimmed <- pheno_trimmed %>%
+  dplyr::select(basename, type, twin_id, cancer_type,age,beadchip)
+rownames(pheno_trimmed) <- pheno_trimmed$basename
+
+save(pheno_trimmed,file=file.path(dataDir,GSE,"pheno_trimmed.Rdata")) # Save locally 
+
+
+```
+
+## QC
+
+```{r}
+
+# Unnormalized beta file
+beta_unnormalized <- read.table(file.path(dataDir,GSE,"GSE89093_Non-normalisedBetas_92Samples.txt"),sep='\t')
+rownames <-beta_unnormalized[,1]
+colnames <- beta_unnormalized[1,]
+beta_unnormalized <- subset(beta_unnormalized, select = -1)
+beta_unnormalized <- beta_unnormalized[-1, ]
+beta_unnormalized <- as.matrix(sapply(beta_unnormalized, as.numeric))
+
+rownames(beta_unnormalized) <- rownames[-1]
+colnames(beta_unnormalized) <- colnames[-1]
+
+# Normalization
+beta <- champ.norm(beta_unnormalized, arraytype = "450k", method = "BMIQ", cores = 8)
+
+# Save normalized beta locally
+save(beta, file = file.path(dataDir,GSE,"beta.Rdata"))
+```
+
+## Cell type heterogeneity
+
+```{r}
+
+load(file.path(dataDir,"GSE89093","beta.Rdata"))
+load(here("0-data","src","cent12CT.m.rda"))
+load(file.path(dataDir,"GSE89093","pheno_trimmed.Rdata"))
+
+# EpiDISH 
+frac.m <- hepidish(beta.m = beta,
+                   ref1.m = centEpiFibIC.m,
+                   ref2.m = cent12CT.m,
+                   h.CT.idx = 3,
+                   method = 'RPC',
+                   maxit = 500)
+
+pheno_trimmed <- cbind(pheno_trimmed, frac.m)
+pheno_trimmed$ic <- rowSums(frac.m[, 3:ncol(frac.m)])
+
+save(pheno_trimmed,file=file.path(dataDir,GSE,"pheno_trimmed.Rdata")) # Save locally 
+```
+
+

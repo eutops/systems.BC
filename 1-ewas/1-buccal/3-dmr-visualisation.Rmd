@@ -1,0 +1,343 @@
+---
+title: "DMR visualisation"
+author: "Chiara Herzog"
+date: "2023-11-17"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = F, message = F, warning = F)
+
+# Install libraries if not available (+ load)
+for (i in c('dplyr', 'ggplot2', 'here', 'fs', 'tibble', 'stringr', 'tidyverse', 'patchwork', 'devtools')){
+  if(length(find.package(i, quiet = T)) == 0){
+    cat('Installing', i)
+    install.packages(i); library(i, character.only = T)
+  }
+}
+
+if(length(find.package('circlize', quiet = T)) == 0){
+    cat('Installing circlize')
+    BiocManager::install('circlize'); library(DMRcate, character.only = T)
+}
+
+if(length(find.package('karyoploteR', quiet = T)) == 0){
+    cat('Installing karyoploteR')
+    BiocManager::install('karyoploteR'); library(karyoploteR, character.only = T)
+}
+
+library(ggplot2)
+library(here)
+library(circlize)
+library(IlluminaHumanMethylationEPICanno.ilm10b4.hg19)
+
+# Settings
+here::i_am("1-ewas/1-buccal/3-dmr-visualisation.Rmd")
+```
+
+
+# Circos plot overlaps
+
+
+```{r}
+buccal <- readRDS(here("1-ewas", "1-buccal", "2-output", "dmr_list.Rds")) |> 
+  dplyr::rename(value = diff) |> 
+  dplyr::select(seqnames, start, end, value)
+
+cervical <- readRDS(here("1-ewas", "2-cervical", "2-output", "dmr_list.Rds")) |> 
+  dplyr::rename(value = diff) |> 
+  dplyr::select(seqnames, start, end, value)
+
+circos.initializeWithIdeogram(plotType = c("ideogram", "labels"),chromosome.index = paste0("chr", 1:22))
+circos.genomicDensity(buccal, col = c("#FF000080"), track.height = 0.3)
+circos.genomicDensity(cervical, col = c("#0000FF80"), track.height = 0.3)
+
+
+```
+
+Buccal (red), cervical (blue) - some peaks seem to overlap
+
+
+```{r}
+load(here("1-ewas", "1-buccal", "2-output", "ranges.Rdata"))
+buccalRanges <- ranges
+
+load(here("1-ewas", "2-cervical", "2-output", "ranges.Rdata"))
+cervicalRanges <- ranges
+
+library(GenomicRanges)
+overlaps <- subsetByOverlaps(buccalRanges, cervicalRanges)
+tmp <- as.data.frame(overlaps)
+
+overlaps2 <- subsetByOverlaps(cervicalRanges, buccalRanges)
+tmp2 <- as.data.frame(overlaps2)
+
+
+
+
+ggplot() +
+  geom_point(aes(x = as.numeric(tmp$meandiff), y = as.numeric(tmp2$meandiff))) +
+  geom_smooth(aes(x = as.numeric(tmp$meandiff), y = as.numeric(tmp2$meandiff)), method = "lm", se = TRUE) +
+  labs(x = "Buccal samples", y = "Cervical samples") +
+  theme_minimal()
+
+```
+
+* Many of the DMRs go in opposing directions, even though the were identified using the same group of individuals!
+* This also explains why the cervical and buccal index likely go in opposite directions
+* We could do the same check looking at DMPs (i.e. checking direction of p-adjusted type-coef in delta-beta in cervical and buccal)
+
+
+```{r}
+buccal <- readRDS(here("1-ewas", "1-buccal", "delta-beta.Rds")) |> 
+  as.data.frame() |> 
+  dplyr::mutate(padj = p.adjust(type, method = 'BH')) |> 
+  tibble::rownames_to_column('cg')
+
+cervical <- readRDS(here("1-ewas", "2-cervical", "delta-beta.Rds")) |> 
+  as.data.frame() |> 
+  dplyr::mutate(padj = p.adjust(type, method = 'BH'))|> 
+  tibble::rownames_to_column('cg') 
+
+dmps <- buccal |> 
+  dplyr::full_join(cervical, by = 'cg') |> 
+  dplyr::filter(type.y < 0.05 | type.x < 0.05)
+
+dmps |> 
+  dplyr::filter(type.x < 0.05) |> 
+  ggplot(aes(x = dir_type.x,
+             y = dir_type.y)) +
+  geom_hex(bins = 100) +
+  labs(x = 'buccal',
+       y = 'cervical',
+       y = 'buccal significant CpGs') +
+  scale_fill_viridis_c(name = "Number of CpGs", option = "plasma") +
+  ggpubr::stat_cor()
+
+dmps |> 
+  dplyr::filter(type.y < 0.05) |> 
+  ggplot(aes(x = dir_type.x,
+             y = dir_type.y)) +
+  geom_hex(bins = 100) +
+  labs(x = 'buccal',
+       y = 'cervical',
+       title = 'cervical significant CpGs') +
+  scale_fill_viridis_c(name = "Number of CpGs", option = "plasma") +
+  ggpubr::stat_cor()
+
+dmps |> 
+  dplyr::filter(type.y < 0.05 & type.x < 0.05) |> 
+  ggplot(aes(x = dir_type.x,
+             y = dir_type.y)) +
+  geom_hex(bins = 100) +
+  labs(x = 'buccal',
+       y = 'cervical',
+       title = 'cervical + buccal overlapping significant CpGs') +
+  scale_fill_viridis_c(name = "Number of CpGs", option = "plasma") +
+  ggpubr::stat_cor()
+
+```
+
+# Delta-beta in epithelial cells of DMPs
+
+```{r}
+dmps |> 
+  dplyr::filter(type.x < 0.05) |> 
+  ggplot(aes(x = db_epithelial.x,
+             y = db_epithelial.y)) +
+  geom_hex(bins = 100) +
+  labs(x = 'buccal',
+       y = 'cervical',
+       y = 'buccal significant CpGs - db epi') +
+  scale_fill_viridis_c(name = "Number of CpGs", option = "plasma") +
+  ggpubr::stat_cor()
+
+dmps |> 
+  dplyr::filter(type.y < 0.05) |> 
+  ggplot(aes(x = db_epithelial.x,
+             y = db_epithelial.y)) +
+  geom_hex(bins = 100) +
+  labs(x = 'buccal',
+       y = 'cervical',
+       title = 'cervical significant CpGs - db epi') +
+  scale_fill_viridis_c(name = "Number of CpGs", option = "plasma") +
+  ggpubr::stat_cor()
+
+dmps |> 
+  dplyr::filter(type.y < 0.05 & type.x < 0.05) |> 
+  ggplot(aes(x = db_epithelial.x,
+             y = db_epithelial.y)) +
+  geom_hex(bins = 100) +
+  labs(x = 'buccal',
+       y = 'cervical',
+       title = 'cervical + buccal overlapping significant CpGs - db epi') +
+  scale_fill_viridis_c(name = "Number of CpGs", option = "plasma") +
+  ggpubr::stat_cor()
+```
+
+# Delta-beta in immune cells of DMPs
+
+```{r}
+dmps |> 
+  dplyr::filter(type.x < 0.05) |> 
+  ggplot(aes(x = db_immune.x,
+             y = db_immune.y)) +
+  geom_hex(bins = 100) +
+  labs(x = 'buccal',
+       y = 'cervical',
+       y = 'buccal significant CpGs - db immune') +
+  scale_fill_viridis_c(name = "Number of CpGs", option = "plasma") +
+  ggpubr::stat_cor()
+
+dmps |> 
+  dplyr::filter(type.y < 0.05) |> 
+  ggplot(aes(x = db_immune.x,
+             y = db_immune.y)) +
+  geom_hex(bins = 100) +
+  labs(x = 'buccal',
+       y = 'cervical',
+       title = 'cervical significant CpGs - db immune') +
+  scale_fill_viridis_c(name = "Number of CpGs", option = "plasma") +
+  ggpubr::stat_cor()
+
+dmps |> 
+  dplyr::filter(type.y < 0.05 & type.x < 0.05) |> 
+  ggplot(aes(x = db_immune.x,
+             y = db_immune.y)) +
+  geom_hex(bins = 100) +
+  labs(x = 'buccal',
+       y = 'cervical',
+       title = 'cervical + buccal overlapping significant CpGs - db immune') +
+  scale_fill_viridis_c(name = "Number of CpGs", option = "plasma") +
+  ggpubr::stat_cor()
+```
+
+
+* Very little correlation between buccal-only or cervical-only significant CpGs with same sites in cervical samples
+* ~ Equal parts positive and negative correlation for significant CpGs
+* Could check same also for delta-beta (significant CpGs only)
+
+
+
+## DMPs
+
+```{r}
+# prep db
+anno <- getAnnotation(IlluminaHumanMethylationEPICanno.ilm10b4.hg19) |> 
+  as.data.frame() |> 
+  dplyr::select(chr, pos, Name) |> 
+  dplyr::rename(cg = Name) |> 
+  dplyr::mutate(start = pos, end = pos)
+
+buccal <- readRDS(here("1-ewas", "1-buccal", "delta-beta.Rds")) |> 
+  as.data.frame() |> 
+  dplyr::mutate(padj = p.adjust(type, method = 'BH')) |> 
+  dplyr::filter(padj < 0.05) |> 
+  tibble::rownames_to_column('cg') |>
+  dplyr::left_join(anno, by = 'cg') |> 
+  dplyr::select(chr, start, pos, padj)
+
+cervical <- readRDS(here("1-ewas", "2-cervical", "delta-beta.Rds")) |> 
+  as.data.frame() |> 
+  dplyr::mutate(padj = p.adjust(type, method = 'BH')) |> 
+  dplyr::filter(padj < 0.05) |> 
+  tibble::rownames_to_column('cg') |>
+  dplyr::left_join(anno, by = 'cg') |> 
+  dplyr::select(chr, start, pos, padj)
+
+circos.initializeWithIdeogram(plotType = c("labels"),chromosome.index = paste0("chr", 1:22))
+circos.genomicDensity(buccal, col = c("#FF000080"), track.height = 0.15)
+circos.genomicDensity(cervical, col = c("#0000FF80"), track.height = 0.15)
+
+list <- list(buccal, cervical)
+
+circos.initializeWithIdeogram(plotType = c("labels"),chromosome.index = paste0("chr", 1:22))
+circos.genomicRainfall(list, pch = 16, cex = 0.4, col = c("#FF000080", "#0000FF80"))
+
+```
+
+
+## Karyoplotter
+
+### Linear 1: Points
+
+Red = cervical
+Blue = buccal
+
+```{r}
+library(karyoploteR)
+
+# Load data
+load(here("1-ewas", "1-buccal", "2-output", "ranges.Rdata")) 
+buccal <- ranges
+
+load(here("1-ewas", "2-cervical", "2-output", "ranges.Rdata")) 
+cervical <- ranges
+
+buccal <- sortSeqlevels(buccal)
+buccal <- sort(buccal)
+buccal <- buccal[buccal$Stouffer<0.05,]
+
+cervical <- sortSeqlevels(cervical)
+cervical <- sort(cervical)
+cervical <- cervical[cervical$Stouffer<0.05,]
+
+meandiff.max <- max(buccal$meandiff, cervical$meandiff)
+meandiff.min <- min(buccal$meandiff, cervical$meandiff)
+cex.val1 <- sqrt(buccal$no.cpgs)/3
+cex.val2 <- sqrt(cervical$no.cpgs)/3
+
+kp <- plotKaryotype(plot.type=4,genome = 'hg19',
+                    chromosomes = paste0('chr', 1:22),
+                    labels.plotter = NULL,cex = 0.5)
+kpAddChromosomeNames(kp, paste0(1:22), cex = 0.8)
+kpDataBackground(kp, data.panel = 1)
+
+#Data panel 1
+kpPoints(kp, data=buccal,
+         y=buccal$meandiff,
+         cex=cex.val1,
+         ymax=meandiff.max,
+         ymin=meandiff.min,
+         col=transparent('blue', 0.6))
+kpPoints(kp, data=cervical,
+         y=cervical$meandiff,
+         cex=cex.val2,
+         ymax=meandiff.max,
+         ymin=meandiff.min,
+         col=transparent('red', 0.6))
+kpAxis(kp, ymax=meandiff.max, ymin=meandiff.min, cex = 0.6)
+kpAddLabels(kp, labels = "mean difference (DMR)", srt=90, pos=1, label.margin = 0.04, ymax=meandiff.max, ymin=meandiff.min, cex = 0.8)
+```
+
+
+### Linear 2: Density
+
+```{r}
+# set up data
+buccal_down <- buccal[sign(buccal$meandiff) == -1,]
+buccal_up <- buccal[sign(buccal$meandiff) == 1,]
+
+cervical_down <- cervical[sign(cervical$meandiff) == -1,]
+cervical_up <- cervical[sign(cervical$meandiff) == 1,]
+
+window <- 6e6
+
+kp <- plotKaryotype(plot.type=4,genome = 'hg19',
+                    chromosomes = paste0('chr', 1:22),
+                    labels.plotter = NULL,cex = 0.5,
+                    ideogram.plotter = NULL)
+kpAddChromosomeNames(kp, paste0(1:22), cex = 0.8)
+# kpDataBackground(kp, data.panel = 1)
+
+kp <- kpPlotDensity(kp, buccal_up, window.size = window, col=transparent("#3388FF", 0.6), border=transparent("#3388FF", 0.6), r0=0.5, r1=1)
+kp <- kpPlotDensity(kp, buccal_down, window.size = window,col=transparent("#3388FF", 0.6), border=transparent("#3388FF", 0.6), r0=0.5, r1=0)
+
+kp <- kpPlotDensity(kp, cervical_up, window.size = window,  col=transparent("red", 0.6), border=transparent("red", 0.6), r0=0.5, r1=1)
+kp <- kpPlotDensity(kp, cervical_down, window.size = window, col=transparent("red", 0.6), border=transparent("red", 0.6), r0=0.5, r1=0)
+
+kpAxis(kp, ymax=1, ymin=-1,labels = c('hypoM', '0', 'hyperM'), cex = 0.5)
+
+kpAddLabels(kp, labels = "DMR (density)", srt=90, pos = 1, label.margin = 0.04,
+            cex = 0.8)
+```

@@ -1,0 +1,413 @@
+---
+title: "Computation of indices"
+author: "Chiara Herzog"
+date: "2023-11-16"
+output: html_document
+---
+
+
+# Computation on validation data
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = F, message = F, warning = F)
+
+# Install libraries if not available (+ load)
+for (i in c('dplyr', 'ggplot2', 'here', 'fs', 'tibble', 'glmnet', 'rms', 'devtools', 'plotly')){
+  if(length(find.package(i, quiet = T)) == 0){
+    cat('Installing', i)
+    install.packages(i); library(i, character.only = T)
+  }
+}
+
+
+library(here)
+library(readr)
+here::i_am("3-computation/2-computation-validation-data.Rmd")
+
+source(here("0-data", "src", "computeIndex.R"))
+source(here("0-data", "src", "adjust_age_ic.R"))
+source(here("0-data", "src", "adjust_neutro.R"))
+source(here("0-data", "src", "computeStemness.R"))
+source(here("0-data", "src", "index_sox2.R"))
+
+```
+
+
+```{r}
+load(here("0-data", "data.Rdata"))
+db_path <- fs::path_expand('~/Dropbox')
+db_path <- "C:/Users/elisa/EUTOPS Team Dropbox/Bente Theeuwes"
+```
+
+# Script to compute three indices
+
+```{r}
+coef_buccal <- readRDS(here("2-training", "1-buccal", "index_coef.Rds"))
+scale_buccal <- readRDS(here("2-training", "1-buccal", "scale.Rds"))
+coef_cervical <- readRDS(here("2-training", "2-cervical", "index_coef.Rds"))
+scale_cervical <- readRDS(here("2-training", "2-cervical", "scale.Rds"))
+coef_blood <- readRDS(here("2-training", "3-blood", "index_coef.Rds"))
+scale_blood <- readRDS(here("2-training", "3-blood", "scale.Rds"))
+probe <- read_csv(file =here("0-data","src","mDNA.csv")) # nrow - 219 /is.na - 16 # Stemness index
+
+# Existing WID-BC index (cervical) as developed previously
+load(file=here("0-data","src","scalingBCDiscovery.rda")) # scalingBCDiscovery
+load(here("0-data","src","coefBCDiscovery.rda")) #coefBCDiscovery
+
+
+computeIndices <- function(beta, pheno){
+  
+  intersect <- intersect(colnames(beta), pheno$basename)
+  beta <- beta[,intersect]
+  pheno <- pheno[match(intersect, pheno$basename),]
+  
+  # buccal
+  pheno$WID_buccal_BC <- computeIndex(beta, w = coef_buccal, scaling = scale_buccal,
+                                      name = 'WID-BC-buccal')
+  
+  # cervical
+  pheno$WID_cervical_BC <- computeIndex(beta, w = coef_cervical, scaling = scale_cervical,
+                                        name = 'WID-BC-cervical')
+  
+  # blood
+  pheno$WID_blood_BC <- computeIndex(beta, w = coef_blood, scaling = scale_blood,
+                                     name = 'WID-BC-blood')
+  
+  # Stemness 
+  pheno$stemness <- computeStemness(beta, pheno)
+  
+  # SOX2 index
+  pheno$SOX2 <- index_sox2(beta)
+  
+  # Existing WID-BC index (cervical) as previously developed
+  pheno$WID_BC <- computeIndex(beta, w = coefBCDiscovery, scaling = scalingBCDiscovery,
+                                     name = 'WID-BC-existing')
+  
+  return(pheno)
+}
+```
+
+
+## Buccal validation
+
+```{r}
+load(here(db_path, "data", "4c-buccal", "beta_merged.Rdata"))
+buccal_val <- computeIndices(beta_merged, data)
+
+# Adjust scores for age and ic
+buccal_val <- adjust_age_ic(buccal_val,indices=c("WID_buccal_BC","WID_cervical_BC","WID_blood_BC","stemness"),tissue=F)
+
+# Adjust scores for neutro
+buccal_val <- adjust_neutro(buccal_val,indices=c("WID_blood_BC"),tissue=F)
+
+# Adjust scores for neutro
+buccal_val <- adjust_neutro(buccal_val,indices=c("WID_blood_BC","WID_buccal_BC","WID_cervical_BC"),tissue=F,appendix='_adj_neutro')
+
+
+# save for plotting
+save(buccal_val, file=here("0-data","dataframes-plotting","buccal_validation.Rdata"))
+```
+### AUC
+
+```{r}
+# Unadjusted
+pROC::roc(buccal_val$type, buccal_val$WID_buccal_BC) # 0.7048
+pROC::roc(buccal_val$type, buccal_val$WID_cervical_BC) # 0.5892
+pROC::roc(buccal_val$type, buccal_val$WID_blood_BC) # 0.6022
+
+
+# Adjusted for ic and age (WID-buccal/cervical) or neutro (WID-blood)
+pROC::roc(buccal_val$type, buccal_val$WID_buccal_BC_adj) # 0.7534
+pROC::roc(buccal_val$type, buccal_val$WID_cervical_BC_adj) # 0.5809
+pROC::roc(buccal_val$type, buccal_val$WID_blood_BC_adj) # # 0.5841
+```
+
+
+### Statistics
+
+```{r}
+bc_case_values <- buccal_val$WID_buccal_BC_adj[buccal_val$type == "BC case"]
+control_values <- buccal_val$WID_buccal_BC_adj[buccal_val$type == "Control"]
+
+# Perform Wilcoxon rank sum test
+wilcox_result <- wilcox.test(bc_case_values, control_values)
+
+# Display the result
+print(wilcox_result)
+```
+
+
+## Cervical validation
+
+```{r}
+load(here(db_path, "data", "3c", "beta_merged.Rdata"))
+cervical_val <- computeIndices(beta_merged, data[data$set == 'validation_cervical',])
+
+
+
+# Adjust scores for age and ic
+cervical_val <- adjust_age_ic(cervical_val,indices=c("WID_buccal_BC","WID_cervical_BC","WID_blood_BC","stemness"),tissue=F)
+
+
+# Adjust scores for neutro
+cervical_val <- adjust_neutro(cervical_val,indices=c("WID_blood_BC","WID_buccal_BC","WID_cervical_BC"),tissue=F,appendix='_adj_neutro')
+
+
+cervical_val <- adjust_neutro(cervical_val,indices=c("WID_blood_BC"),tissue=F)
+
+# save for plotting
+save(cervical_val, file=here("0-data","dataframes-plotting","buccal_validation.Rdata"))
+```
+### AUC
+
+```{r}
+# Unadjusted
+pROC::roc(cervical_val$type, cervical_val$WID_cervical_BC) # 0.6537
+pROC::roc(cervical_val$type, cervical_val$WID_buccal_BC) # 0.565
+pROC::roc(cervical_val$type, cervical_val$WID_blood_BC) # 0.5205
+
+
+# Adjusted for ic and age (WID-buccal/cervical) or neutro (WID-blood)
+pROC::roc(cervical_val$type, cervical_val$WID_cervical_BC_adj) # 0.6592
+pROC::roc(cervical_val$type, cervical_val$WID_buccal_BC_adj) # 0.5636
+pROC::roc(cervical_val$type, cervical_val$WID_blood_BC_adj) # 0.5571
+
+```
+
+### Statistics
+
+```{r}
+bc_case_values <- cervical_val$WID_cervical_BC_adj[cervical_val$type == "BC case"]
+control_values <- cervical_val$WID_cervical_BC_adj[cervical_val$type == "Control"]
+
+# Perform Wilcoxon rank sum test
+wilcox_result <- wilcox.test(bc_case_values, control_values)
+
+# Display the result
+print(wilcox_result)
+```
+## Comparing buccal and cervical validation 
+
+```{r}
+
+# Merge the dataframes based on the 'id' column, re-order, etcetera
+# To only retain matched individuals for direct comparison.
+
+reorder <- match(buccal_val$id,cervical_val$id)
+wid_c <- cervical_val[reorder[!is.na(reorder)],]
+wid_b <- buccal_val[!is.na(reorder),]
+
+
+roc_buccal <- roc(wid_b$type, wid_b$WID_buccal_BC_adj, direction = "<")
+roc_cervical <- roc(wid_c$type, wid_c$WID_cervical_BC_adj, direction = "<")
+
+roc.test(roc_buccal,roc_cervical, are.paired=T)
+```
+
+
+
+## Blood validation sets
+
+### Wang GSE237036
+
+```{r}
+load(here(db_path, "data", "blood", "GSE237036_wang", "beta_merged.Rdata"))
+load(here(db_path, "data", "blood", "GSE237036_wang", "GSE237036_pheno_trimmed.Rdata"))
+
+blood_val <- computeIndices(beta_merged, pheno_trimmed)
+
+# Adjust scores for neutro
+blood_val <- adjust_neutro(blood_val,indices=c("WID_blood_BC","WID_buccal_BC","WID_cervical_BC"),tissue=F)
+
+
+
+
+
+# save for plotting
+save(blood_val, file=here("0-data","dataframes-plotting","blood_validation.Rdata"))
+
+
+blood_wang_val |>
+  ggplot(aes(x = type,
+             y = WID_blood_BC)) +
+  geom_boxplot()
+
+
+
+
+```
+### AUC
+
+```{r}
+blood_val$type <- factor(blood_val$type, levels=c('Control','BC case'))
+
+# Unadjusted
+pROC::roc(blood_val$type, blood_val$WID_buccal_BC,direction = "<") # 0.38
+pROC::roc(blood_val$type, blood_val$WID_cervical_BC,direction = "<") #  0.626
+pROC::roc(blood_val$type, blood_val$WID_blood_BC,direction = "<") # 0.5367
+
+# Adjusted for neutro 
+pROC::roc(blood_val$type, blood_val$WID_buccal_BC_adj,direction = "<") # 0.3907
+pROC::roc(blood_val$type, blood_val$WID_cervical_BC_adj,direction = "<") # 0.618
+pROC::roc(blood_val$type, blood_val$WID_blood_BC_adj,direction = "<") # 0.51
+
+
+## Adjust for ic 
+pROC::roc(blood_val$type, blood_val$WID_buccal_BC_adj_ic,direction = "<") # 0.404
+pROC::roc(blood_val$type, blood_val$WID_cervical_BC_adj_ic,direction = "<") #  0.626
+pROC::roc(blood_val$type, blood_val$WID_blood_BC_adj_ic,direction = "<") # 0.534
+
+```
+
+## FORECEE
+
+```{r}
+discovery_blood <- data[data$set=='discovery_blood',] # discovery set blood
+load(here(db_path, "data", "3c-blood", "beta_merged.Rdata")) # beta_merged
+
+
+blood_3c_val <- computeIndices(beta_merged, discovery_blood)
+
+# Adjust scores for age and ic
+blood_3c_val <- adjust_age_ic(blood_3c_val,indices=c("WID_buccal_BC","WID_cervical_BC","WID_blood_BC","stemness"),tissue=F)
+
+
+# Adjust scores for neutro
+blood_3c_val <- adjust_neutro(blood_3c_val,indices=c("WID_blood_BC","WID_buccal_BC","WID_cervical_BC"),tissue=F,appendix='_adj_neutro')
+
+
+# save for plotting
+save(blood_3c_val, file=here("0-data","dataframes-plotting","3c_blood_validation.Rdata"))
+```
+
+
+
+### PLCO
+
+```{r}
+load(here(db_path, "data", "plco", "beta_merged.Rdata"))
+blood_plco_val <- computeIndices(beta_merged, data)
+
+
+
+blood_plco_val |> 
+  ggplot(aes(x = type,
+             y = WID_blood_BC)) +
+  geom_boxplot()
+
+
+blood_plco_val |> 
+  ggplot(aes(x = time_to_event,
+             y = WID_blood_BC,
+             colour = type)) +
+  geom_point() +
+  geom_smooth(method = 'lm')
+
+blood_plco_val |> 
+  ggplot(aes(x = hepidish_Neutro,
+             y = WID_blood_BC,
+             colour = type)) +
+  geom_point() +
+  geom_smooth(method = 'lm')
+
+blood_plco_val |>
+  ggplot(aes(x = time_to_event,
+             y = WID_blood_BC,
+             colour = type)) +
+  geom_point() +
+  geom_smooth(method = 'lm')
+
+blood_plco_val |>
+  ggplot(aes(x = hepidish_Neutro,
+             y = WID_blood_BC,
+             colour = type)) +
+  geom_point() +
+  geom_smooth(method = 'lm')
+
+load(here(db_path, "data", "iarc-epic", "beta_final.Rdata"))
+blood_iarc_val <- computeIndices(beta_final, data)
+```
+
+
+## BRCA dataset
+
+```{r}
+load(here(db_path, "data", "BRCA-DS1", "beta_merged.Rdata"))
+brca_val <- computeIndices(beta_merged, data)
+
+
+# Adjust scores for age and ic
+brca_val <- adjust_age_ic(brca_val,indices=c("WID_buccal_BC","WID_blood_BC","WID_cervical_BC"),tissue=F)
+
+# save for plotting
+save(brca_val, file=here("0-data","dataframes-plotting","brca_validation.Rdata"))
+
+brca_val |> 
+  ggplot(aes(x = type,
+             y = WID_buccal_BC)) +
+  geom_boxplot() +
+  ggpubr::stat_compare_means(ref.group = 'Control',
+                             label = 'p.signif') +
+  facet_wrap(~sampletype)
+
+brca_val |> 
+  ggplot(aes(x = type,
+             y = WID_cervical_BC)) +
+  geom_boxplot() +
+  ggpubr::stat_compare_means(ref.group = 'Control',
+                             label = 'p.signif') +
+  facet_wrap(~sampletype)
+
+brca_val |> 
+  ggplot(aes(x = type,
+             y = WID_blood_BC)) +
+  geom_boxplot() +
+  ggpubr::stat_compare_means(ref.group = 'Control',
+                             label = 'p.signif') +
+  facet_wrap(~sampletype)
+```
+
+## Breast datasets
+
+### Tissue at risk
+
+```{r}
+load(here(db_path, "data", "TISSUE-AT-RISK", "beta_merged.Rdata"))
+tissue_at_risk_val <- computeIndices(beta_merged, data)
+
+
+# Adjust scores for age and ic
+tissue_at_risk_val <- adjust_age_ic(tissue_at_risk_val,indices=c("WID_buccal_BC","WID_cervical_BC","WID_blood_BC","stemness","WID_BC"),tissue=F)
+
+# save for plotting
+save(tissue_at_risk_val, file=here("0-data","dataframes-plotting","tissue_at_risk_validation.Rdata"))
+
+```
+
+### TCGA
+
+```{r}
+# Load TCGA beta
+load(here(db_path, "data", "tcga", "TCGA-BRCA", "beta.Rdata"))
+
+# Load TCGA pheno
+load(here(db_path, "eca", "sola", "1-download", "2-output", "data.Rdata"))
+
+intersect <- intersect(data$barcode1, colnames(beta))
+beta <- beta[,match(intersect, colnames(beta))]
+data <- data[match(intersect, data$barcode1),]
+data$basename <- data$barcode1
+
+tcga_val <- computeIndices(beta, data) 
+
+# Adjust scores for age and ic
+tcga_val <- adjust_age_ic(tcga_val,indices=c("WID_buccal_BC","WID_cervical_BC","WID_BC"),tissue=F)
+tcga_val <- adjust_neutro(tcga_val,indices=c("WID_blood_BC"),tissue=F)
+
+# save for plotting
+save(tcga_val, file=here("0-data","dataframes-plotting","tcga_validation.Rdata"))
+
+```
+
+
+

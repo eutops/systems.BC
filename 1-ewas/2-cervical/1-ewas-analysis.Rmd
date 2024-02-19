@@ -1,0 +1,156 @@
+---
+title: "EWAS on cervical samples"
+author: "Chiara Herzog"
+date: "2023-11-15"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = F, message = F, warning = F)
+
+# Install libraries if not available (+ load)
+for (i in c('dplyr', 'ggplot2', 'here', 'fs', 'tibble')){
+  if(length(find.package(i, quiet = T)) == 0){
+    cat('Installing', i)
+    install.packages(i); library(i, character.only = T)
+  }
+}
+
+here::i_am("1-ewas/2-cervical/1-ewas-analysis.Rmd")
+load(here("0-data", "data.Rdata"))
+source(here("0-data", "src", "expand_celltypes.R"))
+db_path <- fs::path_expand('~/Dropbox')
+
+setname <- 'discovery_cervical'
+sampletypename <- 'cervical'
+filename <- '2-cervical'
+```
+
+# Overview
+
+An EWAS is run on the entire discovery set of cervical samples. Here, we visualise covariates and prepare a script that can be run in terminal as this is quicker.
+
+## Visualisation of covariates
+
+```{r}
+data |> 
+  dplyr::filter(set == setname) |> 
+  ggplot(aes(x = type,
+             y = age,
+             fill = type)) +
+  geom_boxplot() +
+  facet_wrap(~subset) +
+  ggpubr::stat_compare_means(ref.group = 'Control', label = 'p.signif')
+
+data |> 
+  dplyr::filter(set == setname) |> 
+  ggplot(aes(x = type,
+             y = ic,
+             fill = type)) +
+  geom_boxplot() +
+  facet_wrap(~subset) +
+  ggpubr::stat_compare_means(ref.group = 'Control', label = 'p.signif')
+
+data |> 
+  dplyr::filter(set == setname) |> 
+  ggplot(aes(x = type,
+             y = hepidish_CD4T,
+             fill = type)) +
+  geom_boxplot() +
+  facet_wrap(~subset) +
+  ggpubr::stat_compare_means(ref.group = 'Control', label = 'p.signif')
+
+data |> 
+  dplyr::filter(set == setname) |> 
+  ggplot(aes(x = type,
+             y = BMI,
+             fill = type)) +
+  geom_boxplot() +
+  facet_wrap(~subset) +
+  ggpubr::stat_compare_means(ref.group = 'Control', label = 'p.signif')
+
+data |> 
+  dplyr::filter(set == setname) |> 
+  ggplot(aes(x = type,fill = menopause)) +
+  geom_bar() +
+  facet_wrap(~subset)
+
+data |> 
+  dplyr::filter(set == setname) |> 
+  ggplot(aes(x = type,
+             fill = OCP_current)) +
+  geom_bar() +
+  facet_wrap(~subset)
+
+data |> 
+  dplyr::filter(set == setname) |> 
+  expand_celltypes() |> 
+  ggplot(aes(x = type,
+             y = cell_prop,
+             fill = type)) +
+  geom_boxplot() +
+  facet_grid(celltype~subset) +
+  coord_flip() +
+  ggpubr::stat_compare_means(ref.group = 'Control',
+                             label = 'p.signif')
+```
+
+
+## Prepare code for EWAS
+
+```{r}
+pheno <- droplevels(data[data$set==setname & data$sampletype==sampletypename,]) |> 
+  tibble::remove_rownames() |> 
+  # set rownames to be compatible with script
+  tibble::column_to_rownames('basename')
+save(pheno, file = here("1-ewas", "2-cervical", "pheno.Rdata"))
+
+# Set paths
+pheno <- here("1-ewas","2-cervical", "pheno.Rdata")
+beta <- here(db_path, "data", "3c", "beta_merged.Rdata")
+output <- here("1-ewas", "2-cervical")
+script <- here("0-data", "src", "estimateDeltaBeta.R")
+
+# Out script
+out <- glue::glue("source('", script, "')
+     
+     estimateDeltaBeta(pheno = '", pheno, "',
+     beta = '", beta, "',
+     output = '", output, "',
+     adjustment = c('age', 'ic'))")
+
+# Save script
+write(out, here("1-ewas", "2-cervical", "1-run-db.R"))
+
+# Run script in terminal
+```
+
+# EWAS Results
+
+
+```{r}
+db <- readRDS(here("1-ewas", filename, "delta-beta.Rds"))
+db <- as.data.frame(db)
+
+
+db |> 
+  ggplot(aes(x = type)) +
+  geom_histogram(bins = 100)
+
+db$padj <- p.adjust(db$type, method = 'BH')
+
+db |> 
+  tidyr::pivot_longer(db_epithelial:db_immune,
+                      names_to = 'fraction',
+                      values_to = 'db') |> 
+  ggplot(aes(x = db,
+             fill = fraction),
+         alpha = 0.5) +
+  geom_histogram(bins = 100)
+```
+
+## Significant sites
+
+* `r sum(db$type<0.05)` significant CpGs
+* `r sum(p.adjust(db$type, method = 'BH') < 0.05)` after BH adjustment
+* maximum p value: `r format(max(db$type[db$padj < 0.05]), scientific = T)`

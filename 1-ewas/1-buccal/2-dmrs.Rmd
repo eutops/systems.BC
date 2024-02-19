@@ -1,0 +1,120 @@
+---
+title: "DMR analysis in buccal samples"
+author: "Chiara Herzog"
+date: "2023-11-17"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = F, message = F, warning = F)
+
+# Install libraries if not available (+ load)
+for (i in c('dplyr', 'ggplot2', 'here', 'fs', 'tibble', 'stringr', 'tidyverse', 'patchwork', 'devtools')){
+  if(length(find.package(i, quiet = T)) == 0){
+    cat('Installing', i)
+    install.packages(i); library(i, character.only = T)
+  }
+}
+
+if(length(find.package('DMRcate', quiet = T)) == 0){
+    cat('Installing DMRcate')
+    BiocManager::install('DMRcate'); library(DMRcate, character.only = T)
+}
+
+library(ggplot2)
+library(here)
+library(DMRcate)
+
+# Settings
+here::i_am("1-ewas/1-buccal/2-dmrs.Rmd")
+set = 'discovery_buccal'
+sampletype = 'buccal'
+foldername = '1-buccal'
+
+# scripts
+source(here('0-data', "src", "coerce-numeric.R"))
+source(here('0-data', "src", "saveDMRs.R"))
+source(here('0-data', "src", "plotDMRs.R"))
+```
+
+```{r}
+# load data
+load(here("0-data", "data.Rdata"))
+db_path <- fs::path_expand('~/Dropbox')
+load(here(db_path, "data", "3c-buccal", "beta_merged.Rdata"))
+
+# set pheno and beta
+pheno <- data[data$set==set & data$sampletype==sampletype,]
+beta <- coerce_numeric(beta_merged[,pheno$basename])
+
+# get variables
+age <- pheno$age
+ic <- pheno$ic
+type <- factor(pheno$type, levels = c("Control", "BC case"))
+```
+
+# Overview
+
+## Run DMRcate
+
+```{r}
+# Set up model matrix
+design <- model.matrix(~type + age + ic)
+
+# annotate
+anno <- cpg.annotate("array", beta, arraytype = "EPIC",
+                     analysis.type="differential",
+                     coef = 2,
+                     design=design)
+
+dmrc <- dmrcate(anno)
+
+
+ranges <- DMRcate::extractRanges(dmrc, genome = "hg19")
+ranges <- ranges[order(ranges$Stouffer),]
+
+save(ranges, file = here("1-ewas", foldername, "2-output", "ranges.Rdata"))
+
+df <- saveDMRs(ranges= ranges,
+               beta = beta,
+               pheno = pheno,
+               file = here("1-ewas", foldername, "2-output", "dmr_list"))
+
+ranges_filtered <- ranges[match(paste0(df$seqnames, df$start, df$end),
+                                paste0(seqnames(ranges), start(ranges), end(ranges))),]
+```
+
+## Plot DMRs (training)
+
+```{r}
+pdf(file = here("1-ewas", foldername, "2-output", "dmr_buccal_discovery.pdf"),
+    width = 9, height = 5)
+plotDMRs(ranges = ranges_filtered,
+          beta = beta,
+          pheno = pheno,
+          type = "buccal",
+          n = 100)
+dev.off()
+```
+
+## Plot DMRs (validation)
+
+
+```{r}
+# Load data
+load(here(db_path, "data", "4c-buccal", "beta_merged.Rdata"))
+load(here("0-data", "data.Rdata"))
+
+# set pheno and beta
+pheno <- data[data$set=='validation_buccal' & data$sampletype==sampletype,]
+beta <- coerce_numeric(beta_merged[,pheno$basename])
+
+pdf(file = here("1-ewas", foldername, "2-output", "dmr_buccal_validation.pdf"),
+    width = 9, height = 5)
+plotDMRs(ranges = ranges_filtered,
+          beta = beta,
+          pheno = pheno,
+          type = "buccal",
+          n = 100)
+dev.off()
+```
