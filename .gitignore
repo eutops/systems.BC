@@ -18,3 +18,4 @@ temp/*
 .Rhistory
 !0-data/dataframes-plotting/*.Rdata
 !0-data/dataframes-plotting/*.gz
+.Rproj.user
