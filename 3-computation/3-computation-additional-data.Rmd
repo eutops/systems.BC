@@ -18,10 +18,13 @@ for (i in c('dplyr', 'ggplot2', 'here', 'fs', 'tibble', 'glmnet', 'rms', 'devtoo
 
 
 library(here)
+library(ggpubr)
+library(EpiDISH)
 here::i_am("3-computation/2-computation-validation-data.Rmd")
 
 source(here("0-data", "src", "computeIndex.R"))
 source(here("0-data", "src", "adjust_age_ic.R"))
+source(here("0-data", "src", "adjust_neutro.R"))
 
 ```
 
@@ -334,4 +337,239 @@ ic_blood <- ggplot(blood_BC, aes(x = Neu, y = WID_blood_BC, color = type)) +
 ic_buccal
 ic_cervical
 ic_blood
+```
+
+
+## Inflammation set
+
+```{r}
+load(file.path(dataDir,"GSE42861","pheno.Rdata"))
+load(file.path(dataDir,"GSE42861","beta_merged.Rdata"))
+
+# EpiDISH
+load("C:/Users/elisa/EUTOPS Team Dropbox/Bente Theeuwes/eca/bc-blood/Manuscript/0-data/cent12CT.m.rda")
+
+frac.m <- hepidish(beta.m = beta_merged,
+                   ref1.m = centEpiFibIC.m,
+                   ref2.m = cent12CT.m,
+                   h.CT.idx = 3,
+                   method = 'RPC',
+                   maxit = 500)
+
+pheno <- cbind(pheno, frac.m)
+
+inflammation_BC <- computeIndices(beta_merged, pheno)
+```
+Select only BC and matched controls
+
+```{r}
+# Filter rows with only females
+inflammation_BC <- inflammation_BC %>%
+  filter(gender == 'f') 
+```
+
+```{r}
+
+
+inflammation_BC |> 
+  ggplot(aes(x = type,
+             y = WID_cervical_BC)) +
+  geom_boxplot() + ggpubr::stat_compare_means(ref.group = 'Control',
+                             label = 'p.signif', paired = F) 
+
+inflammation_BC |> 
+  ggplot(aes(x = type,
+             y = WID_buccal_BC)) +
+  geom_boxplot() + ggpubr::stat_compare_means(ref.group = 'Control',
+                             label = 'p.signif', paired = F) 
+
+inflammation_BC |> 
+  ggplot(aes(x = type,
+             y = WID_blood_BC)) +
+  geom_boxplot() + ggpubr::stat_compare_means(ref.group = 'Control',
+                             label = 'p.signif', paired = F) 
+
+
+
+```
+### AUC
+
+```{r}
+pROC::roc(inflammation_BC$type, inflammation_BC$WID_buccal_BC) # 0.6977
+pROC::roc(inflammation_BC$type, inflammation_BC$WID_cervical_BC) # 0.5913
+pROC::roc(inflammation_BC$type, inflammation_BC$WID_blood_BC) # 0.6211
+```
+
+
+### Age
+
+```{r}
+age_buccal <- ggplot(inflammation_BC, aes(x = as.numeric(age), y = WID_buccal_BC, color = type)) +
+  geom_point(alpha=0.2,size=2) +  # Plot points
+  geom_smooth(method = "lm", se = TRUE, aes(group = type, fill=type)) +
+  labs(
+    y = "WID-BC-buccal index",
+    x = "Subject age"
+  ) +
+  ggpubr::stat_cor(method = "pearson", show.legend = FALSE, label.x.npc='left', label.y.npc='middle') 
+
+age_cervical <- ggplot(inflammation_BC, aes(x = as.numeric(age), y = WID_cervical_BC, color = type)) +
+  geom_point(alpha=0.2,size=2) +  # Plot points
+  geom_smooth(method = "lm", se = TRUE, aes(group = type, fill=type)) +
+  labs(
+    y = "WID-BC-cervical index",
+    x = "Subject age"
+  ) +
+  ggpubr::stat_cor(method = "pearson", show.legend = FALSE, label.x.npc='left', label.y.npc='middle') 
+
+age_blood <- ggplot(inflammation_BC, aes(x = as.numeric(age), y = WID_blood_BC, color = type)) +
+  geom_point(alpha=0.2,size=2) +  # Plot points
+  geom_smooth(method = "lm", se = TRUE, aes(group = type, fill=type)) +
+  labs(
+    y = "WID-BC-blood index",
+    x = "Subject age"
+  ) +
+  ggpubr::stat_cor(method = "pearson", show.legend = FALSE, label.x.npc='left', label.y.npc='middle') 
+
+age_buccal
+age_cervical
+age_blood
+
+```
+
+### Smoking (control)
+
+
+```{r}
+# Filter rows with only controls 
+smoking_control <- inflammation_BC %>%
+  filter(type == 'Control') 
+```
+
+```{r}
+smoking_control |> 
+  ggplot(aes(x = smoking,
+             y = WID_cervical_BC)) +
+  geom_boxplot() + ggpubr::stat_compare_means(ref.group = 'current',
+                             label = 'p.signif', paired = F) 
+
+smoking_control |> 
+  ggplot(aes(x = smoking,
+             y = WID_buccal_BC)) +
+  geom_boxplot() + ggpubr::stat_compare_means(ref.group = 'current',
+                             label = 'p.signif', paired = F) 
+
+smoking_control |> 
+  ggplot(aes(x = smoking,
+             y = WID_blood_BC)) +
+  geom_boxplot() + ggpubr::stat_compare_means(ref.group = 'current',
+                             label = 'p.signif', paired = F) 
+```
+### Neutrophils
+
+```{r}
+ic_buccal <- ggplot(inflammation_BC, aes(x = Neu, y = WID_buccal_BC, color = type)) +
+  geom_point(alpha=0.2,size=2) +  # Plot points
+  geom_smooth(method = "lm", se = TRUE, aes(group = type, fill=type)) +
+  labs(
+    y = "WID-BC-buccal index",
+    x = "Neutrophils"
+  ) +
+  stat_cor(method = "pearson", show.legend = FALSE, label.x.npc='left', label.y.npc='middle') 
+
+ic_cervical <- ggplot(inflammation_BC, aes(x = Neu, y = WID_cervical_BC, color = type)) +
+  geom_point(alpha=0.2,size=2) +  # Plot points
+  geom_smooth(method = "lm", se = TRUE, aes(group = type, fill=type)) +
+  labs(
+    y = "WID-BC-cervical index",
+    x = "Neutrophils"
+  ) +
+  stat_cor(method = "pearson", show.legend = FALSE, label.x.npc='left', label.y.npc='middle') 
+
+ic_blood <- ggplot(inflammation_BC, aes(x = Neu, y = WID_blood_BC, color = type)) +
+  geom_point(alpha=0.2,size=2) +  # Plot points
+  geom_smooth(method = "lm", se = TRUE, aes(group = type, fill=type)) +
+  labs(
+    y = "WID-BC-blood index",
+    x = "Neutrophils"
+  ) +
+  stat_cor(method = "pearson", show.legend = FALSE, label.x.npc='left', label.y.npc='middle') 
+
+ic_buccal
+ic_cervical
+ic_blood
+```
+### Neutrophil and age adjusted
+
+```{r}
+inflammation_BC$hepidish_Neutro <- inflammation_BC$Neu
+inflammation_BC <- adjust_neutro(inflammation_BC,indices=c("WID_blood_BC","WID_buccal_BC","WID_cervical_BC"),tissue=F)
+
+
+
+
+
+
+inflammation_BC |> 
+  ggplot(aes(x = type,
+             y = WID_cervical_BC_adj)) +
+  geom_boxplot() + ggpubr::stat_compare_means(ref.group = 'Control',
+                             label = 'p.signif', paired = F) 
+
+inflammation_BC |> 
+  ggplot(aes(x = type,
+             y = WID_buccal_BC_adj)) +
+  geom_boxplot() + ggpubr::stat_compare_means(ref.group = 'Control',
+                             label = 'p.signif', paired = F) 
+
+inflammation_BC |> 
+  ggplot(aes(x = type,
+             y = WID_blood_BC_adj)) +
+  geom_boxplot() + ggpubr::stat_compare_means(ref.group = 'Control',
+                             label = 'p.signif', paired = F) 
+
+
+
+
+```
+```{r}
+ic_buccal <- ggplot(inflammation_BC, aes(x = Neu, y = WID_buccal_BC_adj, color = type)) +
+  geom_point(alpha=0.2,size=2) +  # Plot points
+  geom_smooth(method = "lm", se = TRUE, aes(group = type, fill=type)) +
+  labs(
+    y = "WID-BC-buccal index (adjusted)",
+    x = "Neutrophils"
+  ) +
+  stat_cor(method = "pearson", show.legend = FALSE, label.x.npc='left', label.y.npc='middle') 
+
+ic_cervical <- ggplot(inflammation_BC, aes(x = Neu, y = WID_cervical_BC_adj, color = type)) +
+  geom_point(alpha=0.2,size=2) +  # Plot points
+  geom_smooth(method = "lm", se = TRUE, aes(group = type, fill=type)) +
+  labs(
+    y = "WID-BC-cervical index (adjusted)",
+    x = "Neutrophils"
+  ) +
+  stat_cor(method = "pearson", show.legend = FALSE, label.x.npc='left', label.y.npc='middle') 
+
+ic_blood <- ggplot(inflammation_BC, aes(x = Neu, y = WID_blood_BC_adj, color = type)) +
+  geom_point(alpha=0.2,size=2) +  # Plot points
+  geom_smooth(method = "lm", se = TRUE, aes(group = type, fill=type)) +
+  labs(
+    y = "WID-BC-blood index (adjusted)",
+    x = "Neutrophils"
+  ) +
+  stat_cor(method = "pearson", show.legend = FALSE, label.x.npc='left', label.y.npc='middle') 
+
+ic_buccal
+ic_cervical
+ic_blood
+```
+
+
+### AUC neutrophil and age adjusted
+
+```{r}
+pROC::roc(inflammation_BC$type, inflammation_BC$WID_buccal_BC_adj) # 0.5262
+pROC::roc(inflammation_BC$type, inflammation_BC$WID_cervical_BC_adj) # 0.5833
+pROC::roc(inflammation_BC$type, inflammation_BC$WID_blood_BC_adj) # 0.6288
 ```

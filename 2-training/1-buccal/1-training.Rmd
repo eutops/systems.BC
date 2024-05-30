@@ -127,7 +127,18 @@ res_lasso <- train_linear_classifier(beta_tr = beta_tr,
                                      lambda = "unrestricted")
 
 save(res_lasso, file = here("2-training", foldername, "res_lasso_p.Rdata"))
-rm(beta_tr, beta_val, res_lasso, res_ridge);gc()
+
+res_elnet <- train_linear_classifier(beta_tr = beta_tr,
+                                     type_tr = pheno_tr$type,
+                                     beta_val = beta_val,
+                                     type_val = pheno_val$type,
+                                     alpha = 0.5,
+                                     n_seq = n.seq,
+                                     lambda = "unrestricted")
+
+save(res_elnet, file = here("2-training", foldername, "res_elnet_p.Rdata"))
+
+rm(beta_tr, beta_val, res_lasso, res_ridge, res_elnet);gc()
 ```
 
 
@@ -173,7 +184,20 @@ res_lasso <- train_linear_classifier(beta_tr = beta_tr,
                                      lambda = "unrestricted")
 
 save(res_lasso, file = here("2-training", foldername, "res_lasso_epi.Rdata"))
-rm(beta_tr, beta_val, res_lasso, res_ridge);gc()
+
+res_elnet <- train_linear_classifier(beta_tr = beta_tr,
+                                     type_tr = pheno_tr$type,
+                                     beta_val = beta_val,
+                                     type_val = pheno_val$type,
+                                     alpha = 0.5,
+                                     n_seq = n.seq,
+                                     lambda = "unrestricted")
+
+save(res_elnet, file = here("2-training", foldername, "res_elnet_epi.Rdata"))
+
+
+
+rm(beta_tr, beta_val, res_lasso, res_ridge, res_elnet);gc()
 ```
 
 
@@ -219,7 +243,20 @@ res_lasso <- train_linear_classifier(beta_tr = beta_tr,
                                      lambda = "unrestricted")
 
 save(res_lasso, file = here("2-training", foldername, "res_lasso_imm.Rdata"))
-rm(beta_tr, beta_val, res_lasso, res_ridge);gc()
+
+res_elnet <- train_linear_classifier(beta_tr = beta_tr,
+                                     type_tr = pheno_tr$type,
+                                     beta_val = beta_val,
+                                     type_val = pheno_val$type,
+                                     alpha = 0.5,
+                                     n_seq = n.seq,
+                                     lambda = "unrestricted")
+
+save(res_elnet, file = here("2-training", foldername, "res_elnet_imm.Rdata"))
+
+
+
+rm(beta_tr, beta_val, res_lasso, res_ridge, res_elnet);gc()
 ```
 
 
@@ -282,7 +319,20 @@ res_lasso <- train_linear_classifier(beta_tr = beta_tr,
                                      lambda = "unrestricted")
 
 save(res_lasso, file = here("2-training", foldername, "res_lasso_combined.Rdata"))
-rm(beta_tr, beta_val, res_lasso, res_ridge);gc()
+
+res_elnet <- train_linear_classifier(beta_tr = beta_tr,
+                                     type_tr = pheno_tr$type,
+                                     beta_val = beta_val,
+                                     type_val = pheno_val$type,
+                                     alpha = 0.5,
+                                     n_seq = n.seq,
+                                     lambda = "unrestricted")
+
+save(res_elnet, file = here("2-training", foldername, "res_elnet_combined.Rdata"))
+
+
+
+rm(beta_tr, beta_val, res_lasso, res_ridge, res_elnet);gc()
 ```
 
 ## Entire beta matrix
@@ -321,34 +371,42 @@ source(here("0-data", "src", "plot_performance_comparisons.R"))
 
 load(here("2-training", foldername, "res_ridge_epi.Rdata"))
 load(here("2-training", foldername, "res_lasso_epi.Rdata"))
+load(here("2-training", foldername, "res_elnet_epi.Rdata"))
 ridge_epi <- combine_sets(res_ridge, "Ridge - Epithelial", type = 'all')
 lasso_epi <- combine_sets(res_lasso, "Lasso - Epithelial", type = 'all')
+elnet_epi <- combine_sets(res_lasso, "Elastic net - Epithelial", type = 'all')
 
 load(here("2-training", foldername, "res_ridge_imm.Rdata"))
 load(here("2-training", foldername, "res_lasso_imm.Rdata"))
+load(here("2-training", foldername, "res_elnet_imm.Rdata"))
 ridge_imm <- combine_sets(res_ridge, "Ridge - Immune", type = 'all')
 lasso_imm <- combine_sets(res_lasso, "Lasso - Immune", type = 'all')
+elnet_imm <- combine_sets(res_lasso, "Elastic net - Immune", type = 'all')
 
 load(here("2-training", foldername, "res_ridge_combined.Rdata"))
 load(here("2-training", foldername, "res_lasso_combined.Rdata"))
+load(here("2-training", foldername, "res_elnet_combined.Rdata"))
 ridge_combined <- combine_sets(res_ridge, "Ridge - Combined", type = 'all')
 lasso_combined <- combine_sets(res_lasso, "Lasso - Combined", type = 'all')
+elnet_combined <- combine_sets(res_lasso, "Elastic net - Combined", type = 'all')
 
 load(here("2-training", foldername, "res_ridge_p.Rdata"))
 load(here("2-training", foldername, "res_lasso_p.Rdata"))
+load(here("2-training", foldername, "res_elnet_p.Rdata"))
 ridge_p <- combine_sets(res_ridge, "Ridge - pval", type = 'all')
 lasso_p <- combine_sets(res_lasso, "Lasso - pval", type = 'all')
+elnet_p <- combine_sets(res_lasso, "Elastic net - pval", type = 'all')
 
-pdat <- rbind(ridge_epi, lasso_epi, ridge_imm, lasso_imm, ridge_combined, lasso_combined, ridge_p, lasso_p)
+pdat <- rbind(ridge_epi, lasso_epi, elnet_epi, ridge_imm, lasso_imm, elnet_imm, ridge_combined, lasso_combined, elnet_combined, ridge_p, lasso_p, elnet_p)
 pdat <- as.data.frame(pdat)
 
 pdat$n <- as.numeric(pdat$n)
 pdat$AUC_val <- as.numeric(pdat$AUC_val)
 pdat$AUC_oob <- as.numeric(pdat$AUC_oob)
 pdat$AUC_tr <- as.numeric(pdat$AUC_tr)
-pdat$Type <- factor(pdat$Type, levels = c("Ridge - Combined", "Lasso - Combined", "Ridge - Epithelial", "Lasso - Epithelial", "Ridge - Immune", "Lasso - Immune", "Ridge - pval", "Lasso - pval"))
+pdat$Type <- factor(pdat$Type, levels = c("Ridge - Combined", "Lasso - Combined", "Elastic net - Combined", "Ridge - Epithelial", "Lasso - Epithelial", "Elastic net - Epithelial", "Ridge - Immune", "Lasso - Immune", "Elastic net - Immune", "Ridge - pval", "Lasso - pval", "Elastic net - pval"))
 
-plotly::ggplotly(plot_performance_compare(pdat, pdat$AUC_val, sets = 8))
+plotly::ggplotly(plot_performance_compare(pdat, pdat$AUC_val, sets = 12))
 
 # save for plotting
 save(pdat, file=here("0-data","dataframes-plotting","buccal-training.Rdata"))
@@ -362,7 +420,7 @@ Max: n = 15000 for Ridge pval Ridge (AUC_val = `r signif(pdat[which.max(pdat$AUC
 ## Out-of-bag estimate AUC
 
 ```{r fig.align = "center", fig.width = 10, fig.height = 4.5}
-plotly::ggplotly(plot_performance_compare(pdat, pdat$AUC_oob, sets = 8))
+plotly::ggplotly(plot_performance_compare(pdat, pdat$AUC_oob, sets = 12))
 
 pdat <- pdat[order(pdat$AUC_oob,decreasing = TRUE),]
 head(pdat)

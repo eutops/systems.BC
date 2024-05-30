@@ -2,7 +2,7 @@
 title: "Plots for manuscript: Cervical and buccal epigenomes are breast tissue surrogates and are reflective of breast cancer status"
 output: html_notebook
 editor_options: 
-  chunk_output_type: inline
+  chunk_output_type: console
 ---
 # Settings 
 
@@ -19,6 +19,8 @@ library(gt)
 library(tidyr)
 library(karyoploteR)
 library(epitools)
+library(wesanderson)
+library(openxlsx)
 
 
 source(here("0-data","src", "plot_roc_dichot.R"))
@@ -27,18 +29,20 @@ source(here("0-data","src", "plot_double_roc.R"))
 source(here("0-data","src", "plot_single_roc.R"))
 source(here("0-data","src","plot_performance_comparisons.R"))
 source(here("0-data","src", "manhattan.R"))
+source(here("0-data","src", "coord_save_excel.R"))
 
 outPath <- here("4-markdown-figures","pdf")
 sepPath <- here("4-markdown-figures","separate-plots")
 supPath <- here("5-supplements")
 jpgPath <- here("4-markdown-figures","jpg")
+coordPath <- here("4-markdown-figures","Source Data")
 
 # dbPath <- fs::path_expand("~/Dropbox")
 dbPath <- sub(" Dropbox.*", " Dropbox/Bente Theeuwes", getwd())
 ```
 
 
-Load dataframes
+## Load dataframes
 
 ```{r}
 # Master dataframe
@@ -61,9 +65,11 @@ load(here("0-data","dataframes-plotting","tissue_at_risk_validation.Rdata")) # t
 load(here("0-data","dataframes-plotting","GSE225845_validation.Rdata")) # GSE225845_val (breast tissue)
 load(here("0-data","dataframes-plotting","tcga_validation.Rdata")) # tcga_val (breast tissue)
 load(here("0-data","dataframes-plotting","3c_blood_validation.Rdata")) # buccal_val
+
+# Principal components in all data and separate for all tissues
 ```
 
-Calculations for plotting
+## Calculations for plotting
 
 ```{r}
 buccal_val$ic_stratification <- buccal_val$ic <= median(buccal_val$ic)
@@ -72,7 +78,7 @@ blood_val$neutro_stratification <- blood_val$hepidish_Neutro <= median(blood_val
 blood_3c_val$neutro_stratification <- blood_3c_val$hepidish_Neutro <= median(blood_3c_val$hepidish_Neutro)
 ```
 
-Order of levels, naming
+## Order of levels, naming
 
 ```{r}
 # Here we change the order of the levels, such that AUC calculation goes right.
@@ -82,7 +88,7 @@ blood_val$type <- factor(blood_val$type, levels = c('Control', 'BC case'))
 blood_3c_val$type <- factor(blood_3c_val$type, levels = c('Control', 'BC case'))
 ```
 
-Colours and text size
+## Colours and text size
 
 ```{r}
 pal.jama <- ggsci::pal_jama()(5)
@@ -95,6 +101,7 @@ colour.Control <- pal.jama[3]
 colour.green <- "#1BA68C"
 colour.blue <- "#3B5C8D"
 colour.red <- "#A61B35"
+colour.breast <- "grey"
 colour.sum <- "#D8C99E"
 
 # Size of AUC label text
@@ -407,7 +414,27 @@ a1 <- ggplot() +
 ## b) Grid with hexbin / eFORGE / mean methylation
 
 ```{r}
-source("fig1_code_chunks.R")
+source(file.path(here(),"4-markdown-figures","fig1b_code_chunks.R"))
+
+# Save coordinates
+b1 <- BHo_CHer$plot
+c1 <- Breast_BHo_CHer
+d1 <- Breast_BHer_CHer
+e1 <- overall
+f1 <- BHo_CHo$plot
+g1 <- Breast_BHo_CHo
+h1 <- BHer_CHo$plot
+i1 <- Breast_BHer_CHo
+
+coord_save_excel(b1, coordPath)
+coord_save_excel(c1, coordPath)
+coord_save_excel(d1, coordPath)
+coord_save_excel(e1, coordPath)
+coord_save_excel(f1, coordPath)
+coord_save_excel(g1, coordPath)
+coord_save_excel(h1, coordPath)
+coord_save_excel(i1, coordPath)
+
 ```
 
 
@@ -465,6 +492,10 @@ a2 <- ggplot(data = buccal_val, aes(x = ic, y = WID_buccal_BC, color = type, fil
 
 a2
 
+
+# Save coordinates
+coord_save_excel(a2, coordPath)
+
 ```
 
 ## b) WID-buccal versus age
@@ -488,6 +519,9 @@ b2 <- ggplot(data = buccal_val, aes(x = age, y = WID_buccal_BC, color = type, fi
 
 b2
 
+# Save coordinates
+coord_save_excel(b2, coordPath)
+
 ```
 ## c) Boxplot WID-buccal (ic and age-adjusted)
 
@@ -508,10 +542,14 @@ c2 <- ggplot(buccal_val,
   theme(legend.title = element_blank()) +
   theme(legend.position = "none",axis.text.x = element_text(angle = 45, hjust = 1)) +  # Remove legend
   theme(panel.background = element_blank()) + 
-  ggpubr::stat_compare_means(comparisons = list(c('Control', 'BC case')), label = 'p.signif',vjust = 0.3) +
+  ggpubr::stat_compare_means(comparisons = list(c('Control', 'BC case')), label = 'p.format',vjust = 0, size=2) +
   scale_fill_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control))
 
 c2
+
+# Save coordinates
+coord_save_excel(c2, coordPath)
+
 ```
 
 ## d) WID-buccal AUC
@@ -530,6 +568,9 @@ d2 <- plot_triple_roc(factor(buccal_val$type), buccal_val$WID_buccal_BC_adj, fac
                             direction1 = "<",direction2 = "<", generalTitle="", textCol1 = "black",textCol3="black",textSize=2.1)
 
 d2
+
+# Save coordinates
+coord_save_excel(d2, coordPath)
 ```
 
 
@@ -560,6 +601,9 @@ e2 <- ggplot(data = cervical_val, aes(x = ic, y = WID_cervical_BC, color = type,
 
 e2
 
+# Save coordinates
+coord_save_excel(e2, coordPath)
+
 ```
 ## f) WID-cervical versus age
 
@@ -582,6 +626,9 @@ f2 <- ggplot(data = cervical_val, aes(x = age, y = WID_cervical_BC, color = type
 
 f2
 
+# Save coordinates
+coord_save_excel(f2, coordPath)
+
 ```
 ## g) Boxplot WID-cervical (ic and age-adjusted)
 
@@ -602,10 +649,13 @@ g2 <- ggplot(cervical_val,
   theme(legend.title = element_blank()) +
   theme(legend.position = "none",axis.text.x = element_text(angle = 45, hjust = 1)) +  # Remove legend
   theme(panel.background = element_blank()) + 
-  ggpubr::stat_compare_means(comparisons = list(c('Control', 'BC case')), label = 'p.signif',vjust = 0.3) +
+  ggpubr::stat_compare_means(comparisons = list(c('Control', 'BC case')), label = 'p.format',vjust = 0, size=2) +
   scale_fill_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control))
 
 g2
+
+# Save coordinates
+coord_save_excel(g2, coordPath)
 ```
 
 ## h) WID-cervical AUC
@@ -624,6 +674,9 @@ h2 <- plot_triple_roc(factor(cervical_val$type), cervical_val$WID_cervical_BC_ad
                             direction1 = "<",direction2 = "<", generalTitle="", textCol1 = "black",textCol3="black",textSize=2.1)
 
 h2
+
+# Save coordinates
+coord_save_excel(h2, coordPath)
 ```
 
 
@@ -655,6 +708,9 @@ i2 <- ggplot(data = blood_val, aes(x = hepidish_Neutro, y = WID_blood_BC, color 
 
 i2
 
+# Save coordinates
+coord_save_excel(i2, coordPath)
+
 ```
 ## j) Boxplot WID-blood (neutro-adjusted)
 
@@ -679,6 +735,9 @@ j2 <- ggplot(blood_val,
   scale_fill_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control))
 
 j2
+
+# Save coordinates
+coord_save_excel(j2, coordPath)
 ```
 ## k) WID-blood AUC
 
@@ -694,6 +753,9 @@ k2 <- plot_triple_roc(factor(blood_val$type), blood_val$WID_blood_BC_adj, factor
                             direction1 = "<",direction2 = "<", generalTitle="", textCol1 = "black",textCol3="black",textSize=2.1)
 
 k2
+
+# Save coordinates
+coord_save_excel(k2, coordPath)
 ```
 
 
@@ -755,11 +817,15 @@ a3 <- buccal_val |>
     # c('T1', 'T2'),
     # c('T1', 'T3'),
     # c('T2', 'T3')
-    ),label = 'p.signif', label.y = c(1.6),step.increase = 0.08, vjust = +0.5,textsize=2) +
-  scale_fill_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control))
+    ),label = 'p.format', label.y = c(1.6),step.increase = 0.13, vjust = 0,textsize=1)  +
+  scale_fill_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control)) +
+   scale_y_continuous(expand = expansion(mult = c(0, 0.1)))
 
 
 a3
+
+# Save coordinates
+coord_save_excel(a3, coordPath)
 ```
 
 
@@ -794,10 +860,14 @@ b3 <- buccal_val |>
 #    c('I', 'II'),
 #    c('I', 'III'),
 #    c('II', 'III')
-    ),label = 'p.signif', label.y = c(1.7),step.increase = 0.08, vjust = +0.5,textsize=2) +
-  scale_fill_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control))
+    ),label = 'p.format', label.y = c(1.7),step.increase = 0.13, vjust = 0,textsize=1)  +
+  scale_fill_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control)) +
+   scale_y_continuous(expand = expansion(mult = c(0, 0.1)))
 
 b3
+
+# Save coordinates
+coord_save_excel(b3, coordPath)
 ```
 
 
@@ -830,10 +900,14 @@ c3 <- buccal_val |>
     c('Control', 'ER+'),
      c('Control', 'ER-')
   #  c('ER+', 'ER-')
-    ),label = 'p.signif', label.y = c(1.7),step.increase = 0.08, vjust = +0.5,textsize=2) +
-  scale_fill_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control))
+    ),label = 'p.format', label.y = c(1.7),step.increase = 0.13, vjust = 0,textsize=1)  +
+  scale_fill_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control))+
+   scale_y_continuous(expand = expansion(mult = c(0, 0.1)))
 
 c3
+
+# Save coordinates
+coord_save_excel(c3, coordPath)
 ```
 
 ## d) WID-buccal: Association with PR status 
@@ -865,10 +939,14 @@ d3 <- buccal_val |>
     c('Control', 'PR+'),
      c('Control', 'PR-')
     #c('PR+', 'PR-')
-    ),label = 'p.signif', label.y = c(1.7),step.increase = 0.08, vjust = +0.5,textsize=2) +
-  scale_fill_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control))
+    ),label = 'p.format', label.y = c(1.7),step.increase = 0.13, vjust = 0,textsize=1)  +
+  scale_fill_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control))+
+   scale_y_continuous(expand = expansion(mult = c(0, 0.1)))
 
 d3
+
+# Save coordinates
+coord_save_excel(d3, coordPath)
 ```
 
 ## e) WID-buccal: Association with HER2 status 
@@ -900,10 +978,14 @@ e3 <- buccal_val |>
     c('Control', 'HER2-'),
      c('Control', 'HER2+')
   #  c('HER2+', 'HER2-')
-    ),label = 'p.signif', label.y = c(1.7),step.increase = 0.08, vjust = +0.5,textsize=2) +
-  scale_fill_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control))
+    ),label = 'p.format', label.y = c(1.7),step.increase = 0.13, vjust = 0,textsize=1)  +
+  scale_fill_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control))+
+   scale_y_continuous(expand = expansion(mult = c(0, 0.1)))
 
 e3
+
+# Save coordinates
+coord_save_excel(e3, coordPath)
 ```
 ## f) WID-buccal: PRS with WID-BC-Buccal
 
@@ -924,12 +1006,13 @@ f3 <- ggplot(buccal_val, aes(x = polygenic_risk_score_bc, y = WID_buccal_BC_adj,
   scale_fill_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control))  +  
   guides(color = guide_colorbar(title = "Horsepower"),
     shape = guide_legend(title = "Weight"), size = guide_legend(title = "Gear")
-  )
+  ) 
 
 f3
 
 
-  
+# Save coordinates
+coord_save_excel(f3, coordPath)  
 
 ```
 ## g) WID-buccal: association with BRCAmut status
@@ -956,12 +1039,13 @@ g3 <- brca_buccal |>
   ), label = 'p.signif') +
   guides(fill = guide_legend(title.position = "top", title.hjust = 0.5)) + 
   scale_fill_manual(values = c("Control" = colour.Control, "BRCA1" = pal.jama[5], "BRCA2" = pal.jama[5]),
-                    aesthetics = c('colour', 'fill'))
+                    aesthetics = c('colour', 'fill')) 
 
 
 g3
        
-
+# Save coordinates
+coord_save_excel(g3, coordPath)  
 ```
 
 ## h) WID-buccal: AUC of WID-BC-buccal in BRCA1/BRCA2 mutation carriers
@@ -979,9 +1063,12 @@ filtered_BRCA1$type <- factor(filtered_BRCA1$type, levels = c('Control', 'BRCA1'
 
 
 h3 <- plot_double_roc(factor(filtered_BRCA1$type), filtered_BRCA1$WID_buccal_BC_adj, factor(filtered_BRCA2$type), filtered_BRCA2$WID_buccal_BC_adj, col1 = colour.blue, col2 = colour.green, title1 = "BRCA1", title2 = "BRCA2", style = "default",
-                            direction1 = "<",direction2 = "<", generalTitle="",textSize = 2.1)
+                            direction1 = "<",direction2 = "<", generalTitle="",textSize = 2.1) 
 
 h3
+
+# Save coordinates
+coord_save_excel(h3, coordPath)  
 ```
 
 ## i) WID-cervical: association with stage
@@ -1013,11 +1100,15 @@ i3 <- cervical_val |>
     # c('T1', 'T2'),
     # c('T1', 'T3'),
     # c('T2', 'T3')
-    ),label = 'p.signif', label.y = c(1.4),step.increase = 0.08, vjust = +0.5,textsize=2) +
-  scale_fill_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control))
+    ),label = 'p.format', label.y = c(1.4),step.increase = 0.13, vjust = 0,textsize=1)  +
+  scale_fill_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control)) +
+   scale_y_continuous(expand = expansion(mult = c(0, 0.1)))
 
 
 i3
+
+# Save coordinates
+coord_save_excel(i3, coordPath)  
 ```
 
 
@@ -1052,10 +1143,14 @@ j3 <- cervical_val |>
   #  c('I', 'II'),
   #  c('I', 'III'),
  #   c('II', 'III')
-    ),label = 'p.signif', label.y = c(1.6),step.increase = 0.08, vjust = +0.5,textsize=2) +
-  scale_fill_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control))
+    ),label = 'p.format', label.y = c(1.6),step.increase = 0.13, vjust = 0,textsize=1)  +
+  scale_fill_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control)) +
+   scale_y_continuous(expand = expansion(mult = c(0, 0.1)))
 
 j3
+
+# Save coordinates
+coord_save_excel(j3, coordPath)  
 ```
 
 
@@ -1088,10 +1183,14 @@ k3 <- cervical_val |>
     c('Control', 'ER+')
    #  c('Control', 'ER-'),
  #   c('ER+', 'ER-')
-    ),label = 'p.signif', label.y = c(1.6),step.increase = 0.08, vjust = +0.5,textsize=2) +
-  scale_fill_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control))
+    ),label = 'p.format', label.y = c(1.6),step.increase = 0.13, vjust = 0,textsize=1)  +
+  scale_fill_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control)) +
+   scale_y_continuous(expand = expansion(mult = c(0, 0.1)))
 
 k3
+
+# Save coordinates
+coord_save_excel(k3, coordPath) 
 ```
 
 ## l) WID-cervical: Association with PR status 
@@ -1124,10 +1223,14 @@ l3 <- cervical_val |>
    #  c('Control', 'PR-'),
 
   #  c('PR+', 'PR-')
-    ),label = 'p.signif', label.y = c(1.6),step.increase = 0.08, vjust = +0.5,textsize=2) +
-  scale_fill_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control))
+    ),label = 'p.format', label.y = c(1.6),step.increase = 0.13, vjust = 0,textsize=1)  +
+  scale_fill_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control)) +
+   scale_y_continuous(expand = expansion(mult = c(0, 0.1)))
 
 l3
+
+# Save coordinates
+coord_save_excel(l3, coordPath) 
 ```
 
 ## m) WID-cervical: Association with HER2 status 
@@ -1161,10 +1264,14 @@ m3 <- cervical_val |>
      c('Control', 'HER2+')
 
   #  c('HER2+', 'HER2-')
-    ),label = 'p.signif', label.y = c(1.6),step.increase = 0.08, vjust = +0.5,textsize=2) +
-  scale_fill_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control))
+    ),label = 'p.format', label.y = c(1.6),step.increase = 0.13, vjust = 0,textsize=1)  +
+  scale_fill_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control)) +
+   scale_y_continuous(expand = expansion(mult = c(0, 0.1)))
 
 m3
+
+# Save coordinates
+coord_save_excel(m3, coordPath) 
 ```
 
 ## n) WID-cervical: PRS with WID-BC-cervical
@@ -1183,12 +1290,13 @@ n3 <- ggplot(cervical_val, aes(x = polygenic_risk_score_bc, y = WID_cervical_BC_
   theme(legend.position = "none") +  # Remove legend
   theme(panel.background = element_blank()) +  
   stat_cor(method = "pearson", show.legend = FALSE, label.x.npc='left', label.y.npc='bottom', size = 2.8) + 
-  scale_fill_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control))
+  scale_fill_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control)) 
 
 n3
 
 
-  
+  # Save coordinates
+coord_save_excel(n3, coordPath) 
 
 ```
 
@@ -1216,10 +1324,13 @@ o3 <- brca_cervical |>
   # ), label = 'p.signif') +
   guides(fill = guide_legend(title.position = "top", title.hjust = 0.5)) + 
   scale_fill_manual(values = c("Control" = colour.Control, "BRCA1" = pal.jama[5], "BRCA2" = pal.jama[5]),
-                    aesthetics = c('colour', 'fill'))
+                    aesthetics = c('colour', 'fill')) 
 
 
 o3
+
+  # Save coordinates
+coord_save_excel(o3, coordPath) 
 
 ```
 
@@ -1238,9 +1349,12 @@ filtered_BRCA1$type <- factor(filtered_BRCA1$type, levels = c('Control', 'BRCA1'
 
 
 p3 <- plot_double_roc(factor(filtered_BRCA1$type), filtered_BRCA1$WID_cervical_BC_adj, factor(filtered_BRCA2$type), filtered_BRCA2$WID_cervical_BC_adj, col1 = colour.blue, col2 = colour.green, title1 = "BRCA1", title2 = "BRCA2", style = "default",
-                            direction1 = "<",direction2 = "<", generalTitle="",textSize = 2.1)
+                            direction1 = "<",direction2 = "<", generalTitle="",textSize = 2.1) 
 
 p3
+
+  # Save coordinates
+coord_save_excel(p3, coordPath) 
 ```
 ## q) WID-blood: association with BRCAmut status
 
@@ -1271,6 +1385,9 @@ q3 <- brca_blood |>
 
 q3
 
+  # Save coordinates
+coord_save_excel(q3, coordPath) 
+
 ```
 
 ## r) WID-blood: AUC of WID-BC-blood in BRCA1/BRCA2 mutation carriers
@@ -1291,6 +1408,9 @@ r3 <- plot_double_roc(factor(filtered_BRCA1$type), filtered_BRCA1$WID_blood_BC_a
                             direction1 = "<",direction2 = "<", generalTitle="",textSize = 2.1)
 
 r3
+
+  # Save coordinates
+coord_save_excel(r3, coordPath) 
 ```
 
 
@@ -1357,7 +1477,7 @@ tissue_at_risk_long$type <- factor(tissue_at_risk_long$type, levels = c("Normal"
 
 
 # Facet wrap by index
-a5 <- ggplot(tissue_at_risk_long, aes(x = type, y = score)) +
+a4 <- ggplot(tissue_at_risk_long, aes(x = type, y = score)) +
   geom_boxplot(aes(fill = index), cex = 0.5, fatten = 2) +
   ggbeeswarm::geom_beeswarm(alpha = 0.5, size = 0.5) +
   labs(
@@ -1376,13 +1496,17 @@ a5 <- ggplot(tissue_at_risk_long, aes(x = type, y = score)) +
    c("Normal", "Risk_reduction_BRCA1_BRCA2"), 
   #  c("Normal", "Normal_adjacent"), # insignificant in all
     c("Normal", "Triple_negative_tumour")),
-                               label = 'p.signif', step.increase = 0.1, vjust = +0.6,textsize=2, hide.ns = T) +
+                               label = 'p.format', step.increase = 0.13, vjust = 0,textsize=1, hide.ns = T) +
 
   labs(fill = "Index")  +
   labs(y = '',
-       title = 'Tissue at risk set (EPIC array)')
+       title = 'Tissue at risk set (EPIC array)') +
+   scale_y_continuous(expand = expansion(mult = c(0, 0.1)))
 
-print(a5)
+print(a4)
+
+  # Save coordinates
+coord_save_excel(a4, coordPath) 
 ```
 
 ## b) AUC tissue at risk normal-adjacent
@@ -1394,10 +1518,13 @@ tmp <- tissue_at_risk_val |>
   dplyr::filter(type %in% c("Normal_adjacent","Triple_negative_tumour")) |> 
   droplevels()
 
-b5 <- plot_triple_roc(factor(tmp$type), tmp$WID_buccal_BC_adj, factor(tmp$type), tmp$WID_cervical_BC_adj, factor(tmp$type), tmp$WID_blood_BC_adj, col1 = colour.green, col2 = colour.blue, col3 = colour.red, title1 = "WID-buccal-BC", title2 = "WID-cervical-BC", title3 = "WID-blood-BC", style = "default",
+b4 <- plot_triple_roc(factor(tmp$type), tmp$WID_buccal_BC_adj, factor(tmp$type), tmp$WID_cervical_BC_adj, factor(tmp$type), tmp$WID_blood_BC_adj, col1 = colour.green, col2 = colour.blue, col3 = colour.red, title1 = "WID-buccal-BC", title2 = "WID-cervical-BC", title3 = "WID-blood-BC", style = "default",
                             direction1 = "<",direction2 = "<", generalTitle="", textCol1 = "white",textSize=2.1,y3=0.35,y2=0.1)
 
-b5
+b4
+
+  # Save coordinates
+coord_save_excel(b4, coordPath) 
 
 ```
 
@@ -1425,7 +1552,7 @@ tcga_long$type <- factor(tcga_long$type, levels = c('Control', 'Cancer'))
 tcga_long$index <- factor(tcga_long$index, levels = c('WID_buccal_BC_adj', 'WID_cervical_BC_adj','WID_blood_BC_adj'))
 
 # facet wrap by index
-c5 <- tcga_long |>
+c4 <- tcga_long |>
   dplyr::filter(barcode3 %in% tmp$barcode3) |>
   ggplot(aes(x = type, y = score)) +
   geom_boxplot(aes(fill = index), cex = 0.5, fatten = 2) +
@@ -1443,14 +1570,18 @@ c5 <- tcga_long |>
         axis.text.x = element_text(angle = 45, hjust = 1)) +
   facet_wrap(~index,scales = 'free',labeller = labeller(index = c("WID_buccal_BC_adj" = "WID-buccal-BC", "WID_cervical_BC_adj" = "WID-cervical-BC", "WID_blood_BC_adj" = "WID-blood-BC"))) +
   ggpubr::stat_compare_means(comparisons = list(c("Control", "Cancer")),
-                             label = 'p.signif',
-                             hide.ns = T, step.increase = 0.05, vjust = +0.6,textsize=2) +
+                             label = 'p.format',
+                             hide.ns = T, step.increase = 0.13, vjust = 0,textsize=1) +
  labs(fill = "index") +
   labs(y = '',
-       title = 'TCGA Set (450K array)')
+       title = 'TCGA Set (450K array)') +
+   scale_y_continuous(expand = expansion(mult = c(0, 0.1)))
 
 
-print(c5)
+print(c4)
+
+  # Save coordinates
+coord_save_excel(c4, coordPath) 
 ```
 
 
@@ -1460,12 +1591,13 @@ print(c5)
 # Reorder the 'type' variable to have 'Control' first
 tcga_val$type <- factor(tcga_val$type, levels = c('Control', 'Cancer'))
 
-d5 <- plot_triple_roc(factor(tcga_val$type), tcga_val$WID_buccal_BC_adj, factor(tcga_val$type), tcga_val$WID_blood_BC_adj, factor(tcga_val$type), tcga_val$WID_cervical_BC_adj, col1 = colour.green, col2 = colour.red, col3 = colour.blue, title1 = "WID-buccal-BC", title2 = "WID-blood-BC", title3 = "WID-cervical-BC", style = "default",
+d4 <- plot_triple_roc(factor(tcga_val$type), tcga_val$WID_buccal_BC_adj, factor(tcga_val$type), tcga_val$WID_blood_BC_adj, factor(tcga_val$type), tcga_val$WID_cervical_BC_adj, col1 = colour.green, col2 = colour.red, col3 = colour.blue, title1 = "WID-buccal-BC", title2 = "WID-blood-BC", title3 = "WID-cervical-BC", style = "default",
                             direction1 = "<",direction2 = "<", generalTitle="", textCol1 = "white",textSize=2.1)
 
-d5
+d4
 
-
+  # Save coordinates
+coord_save_excel(d4, coordPath) 
 
 
 ```
@@ -1486,7 +1618,7 @@ GSE225845_long$type <- factor(GSE225845_long$type, levels=c("normal","adj_norm",
 GSE225845_long$index <- factor(GSE225845_long$index, levels=c("WID_buccal_BC_adj","WID_cervical_BC_adj","WID_blood_BC_adj"))
 
 # Facet wrap by index
-e5 <- ggplot(GSE225845_long, aes(x = type, y = score)) +
+e4 <- ggplot(GSE225845_long, aes(x = type, y = score)) +
   geom_boxplot(aes(fill = index), cex = 0.5, fatten = 2) +
   ggbeeswarm::geom_beeswarm(alpha = 0.5, size = 0.5) +
   labs(
@@ -1505,12 +1637,16 @@ e5 <- ggplot(GSE225845_long, aes(x = type, y = score)) +
     c("normal", "tumor"),
     c("normal", "adj_norm"),
     c("adj_norm", "tumor")),
-                               label = 'p.signif', step.increase = 0.1, vjust = +0.6,textsize=2, hide.ns = T) +
+                               label = 'p.format', step.increase = 0.13, vjust = 0,textsize=1, hide.ns = T) +
   labs(fill = "Index")  +
   labs(y = '',
-       title = 'GSE225845 (EPIC array)')
+       title = 'GSE225845 (EPIC array)') +
+   scale_y_continuous(expand = expansion(mult = c(0, 0.1)))
 
-print(e5)
+print(e4)
+
+  # Save coordinates
+coord_save_excel(e4, coordPath) 
 ```
 
 ## f) AUC GSE225845 normal-adjacent
@@ -1522,11 +1658,13 @@ tmp <- GSE225845_val |>
   dplyr::filter(type %in% c("normal","tumor")) |> 
   droplevels()
 
-f5 <- plot_triple_roc(factor(tmp$type), tmp$WID_buccal_BC_adj, factor(tmp$type), tmp$WID_cervical_BC_adj, factor(tmp$type), tmp$WID_blood_BC_adj, col1 = colour.green, col2 = colour.blue, col3 = colour.red, title1 = "WID-buccal-BC", title2 = "WID-cervical-BC", title3 = "WID-blood-BC", style = "default",
+f4 <- plot_triple_roc(factor(tmp$type), tmp$WID_buccal_BC_adj, factor(tmp$type), tmp$WID_cervical_BC_adj, factor(tmp$type), tmp$WID_blood_BC_adj, col1 = colour.green, col2 = colour.blue, col3 = colour.red, title1 = "WID-buccal-BC", title2 = "WID-cervical-BC", title3 = "WID-blood-BC", style = "default",
                             direction1 = "<",direction2 = "<", generalTitle="", textCol1 = "white",textSize=2.1,y3=0.35,y2=0.1)
 
-f5
+f4
 
+  # Save coordinates
+coord_save_excel(f4, coordPath) 
 ```
 
 
@@ -1541,7 +1679,7 @@ AAAAAABB
 CCCCCCDD
 EEEEEEFF
 "
-compiled <- a5 + b5 + c5 + d5 + e5 + f5
+compiled <- a4 + b4 + c4 + d4 + e4 + f4
   
 compiled <-  compiled + plot_annotation(tag_levels = 'a') + 
   plot_layout(design = layout)
@@ -1549,6 +1687,8 @@ compiled <-  compiled + plot_annotation(tag_levels = 'a') +
 ggsave(file.path(outPath,"F4.pdf"), width = pdf_width, height = pdf_height, compiled)
 ggsave(file.path(jpgPath,"F4.jpg"), width = pdf_width, height = pdf_height, compiled)
 ```
+
+#=========SUPPLEMENTARY TABLES========
 
 # ST1: BRCA table
 
@@ -1962,22 +2102,563 @@ overlaps$meandiff_cervical <- overlaps2$meandiff
 write.csv(overlaps, file.path(supPath, "ST6.csv"), row.names=FALSE)
 ```
 
+#=========EXTENDED DATA FIGURES ========
+# Extended Data 1: PCA plot of all data
+
+## a-c) PCA of all data
+
+```{r}
+
+scatter_size <- 0.4 # size of plotted points
+legend_size <- 1.5 # size of points as displayed in legend
+legend_text_size <- 0.7 # text size of legend entries, relative to base
+
+load(here("0-data","dataframes-plotting","pca_all.Rdata"))
+
+# Identify the indices where pcs$subset equals "GSE237036"
+indices <- which(pcs$subset == "GSE237036")
+
+# Update only those specific indices in pcs$ic
+pcs$ic[indices] <- 1 - (pcs$epi[indices] + pcs$fib[indices])
+
+# Recode some columns for plotting and consistency
+pcs <- pcs %>%
+  mutate(subset = case_when(
+    sampletype == 'buccal' ~ recode(subset,
+                                     'external_validation' = 'Buccal validation set (EPIC)', 
+                                     'brca' = 'BRCA1/2 mutation carrier set (EPIC)',
+                                     'internal_validation' = 'Buccal Discovery Set (EPIC)',
+                                     'training' = 'Buccal Discovery Set (EPIC)'),
+    sampletype == 'cervical' ~ recode(subset,
+                                       'external_validation' = 'Cervical validation set (EPIC)', 
+                                       'brca' = 'BRCA1/2 mutation carrier set (EPIC)',
+                                       'internal_validation' = 'Cervical Discovery Set (EPIC)',
+                                       'training' = 'Cervical Discovery Set (EPIC)'),
+    sampletype == 'blood' ~ recode(subset,
+                                    'GSE237036' = 'Blood validation set (GSE237036 - EPIC)', 
+                                    'brca' = 'BRCA1/2 mutation carrier set (EPIC)',
+                                    'internal_validation' = 'Blood Discovery Set (EPIC)',
+                                    'training' = 'Blood Discovery Set (EPIC)'),
+    sampletype == 'breast' ~ recode(subset,
+                                     'breast_tissue_epic' = 'Tissue at risk set (EPIC)', 
+                                     'TCGA' = 'TCGA Set (450K)',
+                                     'GSE225845' = 'GSE225845 (EPIC)'),
+    TRUE ~ subset  # For all other cases, keep subset unchanged
+  )) %>% 
+  mutate(type = case_when(
+    sampletype == 'breast'~ recode(type, 'adj_norm'='Normal adjacent tissue',
+                                 'Cancer'='Breast cancer tissue*',
+                                 'Control'='Matched normal tissue*',
+                                 'Normal'='Normal tissue',
+                                 'Normal_adjacent'='Normal adjacent tissue',
+                                 'Triple_negative_tumour'='Breast cancer tissue',
+                                 'tumor'='Breast cancer tissue',
+                                 'Risk_reduction_BRCA1'='Normal from BRCA1 mutation carrier',
+                                 'Risk_reduction_BRCA2'='Normal from BRCA2 mutation carrier',
+                                 'normal'='Normal tissue'),
+    sampletype != 'breast' ~ recode(type, 'BRCA1'='Normal from BRCA1 mutation carrier',
+                                 'BRCA2'='Normal from BRCA2 mutation carrier'),
+    TRUE ~ type))
+
+cols <- c('Buccal validation set (EPIC)' = "orange", 'BRCA1/2 mutation carrier set (EPIC)' = pal.jama[5], 'Buccal Discovery Set (EPIC)' = "lightgreen",
+'Cervical validation set (EPIC)' = "darkblue", 'Cervical Discovery Set (EPIC)' = "lightblue",
+'Blood validation set (GSE237036 - EPIC)' = "darkred", 'Blood Discovery Set (EPIC)' = "indianred", 
+'Tissue at risk set (EPIC)'= "darkgrey", 'TCGA Set (450K)'= "lightgrey", 'GSE225845 (EPIC)'= "black")
+breaks <- c('Buccal validation set (EPIC)', 'BRCA1/2 mutation carrier set (EPIC)', 'Buccal Discovery Set (EPIC)',
+'Cervical validation set (EPIC)', 'Cervical Discovery Set (EPIC)',
+'Blood validation set (GSE237036 - EPIC)', 'Blood Discovery Set (EPIC)', 
+'Tissue at risk set (EPIC)', 'TCGA Set (450K)', 'GSE225845 (EPIC)')
+
+cols2 <- c('Normal adjacent tissue'='lightsalmon','Breast cancer tissue*'='palevioletred','Matched normal tissue*'='cyan2','Normal tissue'=colour.Control,'Breast cancer tissue'=colour.Breast,'Normal from BRCA1 mutation carrier'="#79b245",'Normal from BRCA2 mutation carrier'="#2e752f", "BC case" = colour.Breast, "Control"= colour.Control)
+breaks2 <- c('Normal adjacent tissue','Breast cancer tissue*','Matched normal tissue*','Normal tissue','Breast cancer tissue','Normal from BRCA1 mutation carrier','Normal from BRCA2 mutation carrier',"BC case","Control")
 
 
-# Extended Data 1: Index training and evaluation 
+lab_pc1 <- paste0('<b>PC1</b> (', round(pcs$variance[1]*100), "%)")
+lab_pc2 <- paste0('<b>PC2</b> (', round(pcs$variance[2]*100), "%)")
+title_lab <- paste0("<span style = 'font-size:10pt;'><b>All samples</b> // IC</span></span>")
+title_lab2 <- paste0("<span style = 'font-size:10pt;'>// Sample type</span></span>")
+title_lab3 <- paste0("<span style = 'font-size:10pt;'>// Data set</span></span>")
+
+# Plot
+pca_all.ic <- ggplot(data = pcs, aes(x = PC1, y = PC2, color = ic)) +
+  geom_point(alpha = 1, size = scatter_size) +  # Plot points
+ # geom_rug(col=type,alpha=0.1, size=1.5) + 
+  labs(
+    y = "PC2",
+    x = "PC1",
+    color = "IC/neutrophil proportion"  # Rename color legend title
+  ) +
+  theme_bw() +
+  theme(axis.title.y = element_markdown(),
+        axis.title.x = element_markdown(),
+        plot.title = element_markdown(),
+        legend.text=element_text(size=rel(legend_text_size)),
+        legend.title.align=1,
+  legend.direction="vertical") +
+  scale_shape_manual(values = c(1, 16, 13, 14, 10,11,12,15,2,3,4)) +
+  scale_color_gradient(limits = c(0,1), low = "#00E3FF", high = "#FF1C00") + 
+  labs(x = lab_pc1,
+       y = lab_pc2,
+       title=title_lab) + 
+  guides(color = guide_colourbar(position = "left",title.position='top'))
+
+
+
+pca_all.sample <- ggplot(data = pcs, aes(x = PC1, y = PC2, col=sampletype)) +
+  geom_point(alpha = 1, size = scatter_size) +
+ # geom_rug(col=type,alpha=0.1, size=1.5) + 
+  labs(
+    y = "PC2",
+    x = "PC1",
+    color = "Sample type",  # Rename color legend title
+  ) +
+ theme_bw() +
+  theme(axis.title.y = element_markdown(),
+        axis.title.x = element_markdown(),
+        plot.title = element_markdown(),
+        legend.text=element_text(size=rel(legend_text_size)),
+        legend.title.align=1,
+  legend.direction="vertical") +
+  scale_color_manual(values = c("buccal" = colour.green, "cervical" = colour.blue, "blood" = colour.red,"breast" = "grey"))  + 
+  labs(x = lab_pc1,
+       y = lab_pc2,
+       title=title_lab2) + 
+  guides(color = guide_legend(nrow=5,override.aes = list(size = legend_size), label.position = "left",label.hjust = 1,title.position='top'))
+
+pca_all.data <- ggplot(data = pcs, aes(x = PC1, y = PC2, col=subset)) +
+  geom_point(alpha = 1, size = scatter_size) +
+ # geom_rug(col=type,alpha=0.1, size=1.5) + 
+  labs(
+    y = "PC2",
+    x = "PC1",
+    color = "Data set"  # Rename color legend title
+  ) + theme_bw() +
+  theme(axis.title.y = element_markdown(),
+        axis.title.x = element_markdown(),
+        plot.title = element_markdown(),
+        legend.text=element_text(size=rel(legend_text_size)),
+        legend.title.align=1,
+  legend.direction="vertical") +
+  labs(x = lab_pc1,
+       y = lab_pc2,
+       title=title_lab3)  + scale_colour_manual(
+  values = cols,
+  breaks = breaks
+) + 
+  guides(color = guide_legend(nrow=length(unique(pcs$subset)),override.aes = list(size = legend_size), label.position = "left",label.hjust = 1,title.position='top'))
+
+
+
+
+```
+
+
+## d-f) PCA of all buccal data
+
+```{r}
+load(here("0-data","dataframes-plotting","pca_all_buccal.Rdata"))
+
+
+
+
+# Recode some columns for plotting and consistency
+pcs <- pcs %>% mutate(subset=recode(subset, 'external_validation'='Buccal validation set (EPIC)', 
+                             'brca'='BRCA1/2 mutation carrier set (EPIC)',
+                             'internal_validation'='Buccal Discovery Set (EPIC)',
+                             'training'='Buccal Discovery Set (EPIC)'), 
+                      type= recode(type, 'BRCA1'='Normal from BRCA1 mutation carrier',
+                                 'BRCA2'='Normal from BRCA2 mutation carrier'))
+
+lab_pc1 <- paste0('<b>PC1</b> (', round(pcs$variance[1]*100), "%)")
+lab_pc2 <- paste0('<b>PC2</b> (', round(pcs$variance[2]*100), "%)")
+title_lab <- paste0("<span style = 'font-size:10pt;'><b>Buccal</b> // IC</span></span>")
+title_lab2 <- paste0("<span style = 'font-size:10pt;'>// Type</span>")
+title_lab3 <- paste0("<span style = 'font-size:10pt;'> // Data set</span>")
+
+# Plot
+pca_buccal.data <- ggplot(data = pcs, aes(x = PC1, y = PC2, col=subset)) +
+  geom_point(alpha = 1, size = scatter_size) +
+ # geom_rug(col=type,alpha=0.1, size=1.5) + 
+  labs(
+    y = "PC2",
+    x = "PC1",
+    color = "Data set"  # Rename color legend title
+  ) + theme_bw() +
+  theme(axis.title.y = element_markdown(),
+        axis.title.x = element_markdown(),
+        plot.title = element_markdown(),
+  legend.position="none") +
+  labs(x = lab_pc1,
+       y = lab_pc2,
+       title=title_lab3)  + scale_colour_manual(
+  values = cols,
+  breaks = breaks
+)
+
+# Plot
+pca_buccal.ic <- ggplot(data = pcs, aes(x = PC1, y = PC2, color = ic)) +
+  geom_point(alpha = 1, size = scatter_size) +  # Plot points
+ # geom_rug(col=type,alpha=0.1, size=1.5) + 
+  labs(
+    y = "PC2",
+    x = "PC1",
+    color = "IC"  # Rename color legend title
+  ) +
+  theme_bw() +
+  theme(axis.title.y = element_markdown(),
+        axis.title.x = element_markdown(),
+        plot.title = element_markdown(),
+  legend.position="none") +
+  scale_shape_manual(values = c(1, 16, 13, 14, 10,11,12,15,2,3,4)) +
+  scale_color_gradient(limits = c(0,1), low = "#00E3FF", high = "#FF1C00") + 
+  labs(x = lab_pc1,
+       y = lab_pc2,
+       title=title_lab) 
+
+# Plot
+pca_buccal.sample <- ggplot(data = pcs, aes(x = PC1, y = PC2, color = type)) +
+  geom_point(alpha = 1, size = scatter_size) +  # Plot points
+ # geom_rug(col=type,alpha=0.1, size=1.5) + 
+  labs(
+    y = "PC2",
+    x = "PC1",
+    color = "Type (buccal/cervical/blood)"  # Rename color legend title
+  )+ theme_bw() +
+  theme(axis.title.y = element_markdown(),
+        axis.title.x = element_markdown(),
+        plot.title = element_markdown(),
+        legend.text=element_text(size=rel(legend_text_size)),
+                legend.title.align=1,
+  legend.direction="vertical") +
+  labs(x = lab_pc1,
+       y = lab_pc2,
+       title=title_lab2)  + scale_colour_manual(
+  values = cols2,
+  breaks = breaks2
+) + guides(color = guide_legend(nrow=5,override.aes = list(size = legend_size), label.position = "left",label.hjust = 1,title.position='top')) 
+
+```
+
+## g-i) PCA of all cervical data
+
+```{r}
+load(here("0-data","dataframes-plotting","pca_all_cervical.Rdata"))
+
+# Recode some columns for plotting and consistency
+pcs <- pcs %>% mutate(subset=recode(subset, 'external_validation'='Cervical validation set (EPIC)', 
+                             'brca'='BRCA1/2 mutation carrier set (EPIC)',
+                             'internal_validation'='Cervical Discovery Set (EPIC)',
+                             'training'='Cervical Discovery Set (EPIC)'), 
+                      type= recode(type, 'BRCA1'='Normal from BRCA1 mutation carrier',
+                                 'BRCA2'='Normal from BRCA2 mutation carrier'))
+
+
+
+lab_pc1 <- paste0('<b>PC1</b> (', round(pcs$variance[1]*100), "%)")
+lab_pc2 <- paste0('<b>PC2</b> (', round(pcs$variance[2]*100), "%)")
+title_lab <- paste0("<span style = 'font-size:10pt;'><b>Cervical</b> // IC</span></span>")
+title_lab2 <- paste0("<span style = 'font-size:10pt;'>// Type</span>")
+title_lab3 <- paste0("<span style = 'font-size:10pt;'> // Data set</span>")
+
+# Plot
+pca_cervical.data <- ggplot(data = pcs, aes(x = PC1, y = PC2, col=subset)) +
+  geom_point(alpha = 1, size = scatter_size) +
+ # geom_rug(col=type,alpha=0.1, size=1.5) + 
+  labs(
+    y = "PC2",
+    x = "PC1",
+    color = "Data set"  # Rename color legend title
+  ) + theme_bw() +
+  theme(axis.title.y = element_markdown(),
+        axis.title.x = element_markdown(),
+        plot.title = element_markdown(),
+  legend.position="none") +
+  labs(x = lab_pc1,
+       y = lab_pc2,
+       title=title_lab3)  + scale_colour_manual(
+  values = cols,
+  breaks = breaks
+)
+
+# Plot
+pca_cervical.ic <- ggplot(data = pcs, aes(x = PC1, y = PC2, color = ic)) +
+  geom_point(alpha = 1, size = scatter_size) +  # Plot points
+ # geom_rug(col=type,alpha=0.1, size=1.5) + 
+  labs(
+    y = "PC2",
+    x = "PC1",
+    color = "IC"  # Rename color legend title
+  ) +
+  theme_bw() +
+  theme(axis.title.y = element_markdown(),
+        axis.title.x = element_markdown(),
+        plot.title = element_markdown(),
+  legend.position="none") +
+  scale_shape_manual(values = c(1, 16, 13, 14, 10,11,12,15,2,3,4)) +
+  scale_color_gradient(limits = c(0,1), low = "#00E3FF", high = "#FF1C00") + 
+  labs(x = lab_pc1,
+       y = lab_pc2,
+       title=title_lab) 
+
+# Plot
+pca_cervical.sample <- ggplot(data = pcs, aes(x = PC1, y = PC2, color = type)) +
+  geom_point(alpha = 1, size = scatter_size) +  # Plot points
+ # geom_rug(col=type,alpha=0.1, size=1.5) + 
+  labs(
+    y = "PC2",
+    x = "PC1",
+    color = "Type"  # Rename color legend title
+  )+ theme_bw() +
+  theme(axis.title.y = element_markdown(),
+        axis.title.x = element_markdown(),
+        plot.title = element_markdown(),
+        legend.position="none") +
+  labs(x = lab_pc1,
+       y = lab_pc2,
+       title=title_lab2)  + scale_colour_manual(
+  values = cols2,
+  breaks = breaks2
+)
+
+```
+
+
+## j-l) PCA of all blood data
+
+```{r}
+load(here("0-data","dataframes-plotting","pca_all_blood.Rdata"))
+
+# Identify the indices where pcs$subset equals "GSE237036"
+indices <- which(pcs$subset == "GSE237036")
+
+# Update only those specific indices in pcs$ic
+pcs$ic[indices] <- 1 - (pcs$epi[indices] + pcs$fib[indices])
+
+# Recode some columns for plotting and consistency
+pcs <- pcs %>% mutate(subset=recode(subset, 'GSE237036'='Blood validation set (GSE237036 - EPIC)', 
+                             'brca'='BRCA1/2 mutation carrier set (EPIC)',
+                             'internal_validation'='Blood Discovery Set (EPIC)',
+                             'training'='Blood Discovery Set (EPIC)'), 
+                      type= recode(type, 'BRCA1'='Normal from BRCA1 mutation carrier',
+                                 'BRCA2'='Normal from BRCA2 mutation carrier'))
+
+
+
+lab_pc1 <- paste0('<b>PC1</b> (', round(pcs$variance[1]*100), "%)")
+lab_pc2 <- paste0('<b>PC2</b> (', round(pcs$variance[2]*100), "%)")
+title_lab <- paste0("<span style = 'font-size:10pt;'><b>Blood</b> // Neutrophil</span></span>")
+title_lab2 <- paste0("<span style = 'font-size:10pt;'>// Type</span>")
+title_lab3 <- paste0("<span style = 'font-size:10pt;'> // Data set</span>")
+
+# Plot
+pca_blood.data <- ggplot(data = pcs, aes(x = PC1, y = PC2, col=subset)) +
+  geom_point(alpha = 1, size = scatter_size) +
+ # geom_rug(col=type,alpha=0.1, size=1.5) + 
+  labs(
+    y = "PC2",
+    x = "PC1",
+    color = "Data set"  # Rename color legend title
+  ) + theme_bw() +
+  theme(axis.title.y = element_markdown(),
+        axis.title.x = element_markdown(),
+        plot.title = element_markdown(),
+  legend.position="none") +
+  labs(x = lab_pc1,
+       y = lab_pc2,
+       title=title_lab3)  + scale_colour_manual(
+  values = cols,
+  breaks = breaks
+)
+
+# Plot
+pca_blood.ic <- ggplot(data = pcs, aes(x = PC1, y = PC2, color = hepidish_Neutro)) +
+  geom_point(alpha = 1, size = scatter_size) +  # Plot points
+ # geom_rug(col=type,alpha=0.1, size=1.5) + 
+  labs(
+    y = "PC2",
+    x = "PC1",
+    color = "Neutrophil"  # Rename color legend title
+  ) +
+  theme_bw() +
+  theme(axis.title.y = element_markdown(),
+        axis.title.x = element_markdown(),
+        plot.title = element_markdown(),
+  legend.position="none") +
+  scale_shape_manual(values = c(1, 16, 13, 14, 10,11,12,15,2,3,4))  + scale_color_gradient(limits = c(0,1), low = "#00E3FF", high = "#FF1C00") + 
+  labs(x = lab_pc1,
+       y = lab_pc2,
+       title=title_lab) 
+
+# Plot
+pca_blood.sample <- ggplot(data = pcs, aes(x = PC1, y = PC2, color = type)) +
+  geom_point(alpha = 1, size = scatter_size) +  # Plot points
+ # geom_rug(col=type,alpha=0.1, size=1.5) + 
+  labs(
+    y = "PC2",
+    x = "PC1",
+    color = "Type"  # Rename color legend title
+  )+ theme_bw() +
+  theme(axis.title.y = element_markdown(),
+        axis.title.x = element_markdown(),
+        plot.title = element_markdown(),
+  legend.position="none") +
+  labs(x = lab_pc1,
+       y = lab_pc2,
+       title=title_lab2)  + scale_colour_manual(
+  values = cols2,
+  breaks = breaks2
+)
+
+```
+
+
+
+## m-o) PCA of all breast data
+
+```{r}
+
+load(here("0-data","dataframes-plotting","pca_all_breast.Rdata"))
+
+# Recode some columns for plotting and consistency
+pcs <- pcs %>% mutate(type=recode(type, 'adj_norm'='Normal adjacent tissue',
+                                 'Cancer'='Breast cancer tissue*',
+                                 'Control'='Matched normal tissue*',
+                                 'Normal'='Normal tissue',
+                                 'Normal_adjacent'='Normal adjacent tissue',
+                                 'Triple_negative_tumour'='Breast cancer tissue',
+                                 'tumor'='Breast cancer tissue',
+                                 'Risk_reduction_BRCA1'='Normal from BRCA1 mutation carrier',
+                                 'Risk_reduction_BRCA2'='Normal from BRCA2 mutation carrier',
+                                 'normal'='Normal tissue'),
+               subset=recode(subset, 'breast_tissue_epic'='Tissue at risk set (EPIC)', 
+                             'TCGA'='TCGA Set (450K)',
+                             'GSE225845'='GSE225845 (EPIC)'))
+
+
+
+lab_pc1 <- paste0('<b>PC1</b> (', round(pcs$variance[1]*100), "%)")
+lab_pc2 <- paste0('<b>PC2</b> (', round(pcs$variance[2]*100), "%)")
+title_lab <- paste0("<span style = 'font-size:10pt;'><b>Breast</b> // IC</span></span>")
+title_lab2 <- paste0("<span style = 'font-size:10pt;'>// Type</span>")
+title_lab3 <- paste0("<span style = 'font-size:10pt;'> // Data set</span>")
+
+# Plot
+pca_breast.data <- ggplot(data = pcs, aes(x = PC1, y = PC2, col=subset)) +
+  geom_point(alpha = 1, size = scatter_size) +
+ # geom_rug(col=type,alpha=0.1, size=1.5) + 
+  labs(
+    y = "PC2",
+    x = "PC1",
+    color = "Data set"  # Rename color legend title
+  ) + theme_bw() +
+  theme(axis.title.y = element_markdown(),
+        axis.title.x = element_markdown(),
+        plot.title = element_markdown(),
+  legend.position="none") +
+  labs(x = lab_pc1,
+       y = lab_pc2,
+       title=title_lab3)  + scale_colour_manual(
+  values = cols,
+  breaks = breaks
+)
+
+# Plot
+pca_breast.ic <- ggplot(data = pcs, aes(x = PC1, y = PC2, color = ic)) +
+  geom_point(alpha = 1, size = scatter_size) +  # Plot points
+ # geom_rug(col=type,alpha=0.1, size=1.5) + 
+  labs(
+    y = "PC2",
+    x = "PC1",
+    color = "IC"  # Rename color legend title
+  ) +
+  theme_bw() +
+  theme(axis.title.y = element_markdown(),
+        axis.title.x = element_markdown(),
+        plot.title = element_markdown(),
+  legend.position="none") +
+  scale_shape_manual(values = c(1, 16, 13, 14, 10,11,12,15,2,3,4)) +
+  scale_color_gradient(limits = c(0,1), low = "#00E3FF", high = "#FF1C00") + 
+  labs(x = lab_pc1,
+       y = lab_pc2,
+       title=title_lab) 
+
+# Plot
+pca_breast.sample <- ggplot(data = pcs, aes(x = PC1, y = PC2, color = type)) +
+  geom_point(alpha = 1, size = scatter_size) +  # Plot points
+ # geom_rug(col=type,alpha=0.1, size=1.5) + 
+  labs(
+    y = "PC2",
+    x = "PC1",
+    color = "Type (breast)"  # Rename color legend title
+  )+ theme_bw() +
+  theme(axis.title.y = element_markdown(),
+        axis.title.x = element_markdown(),
+        plot.title = element_markdown(),
+                legend.title.align=1,
+        legend.text=element_text(size=rel(legend_text_size)),
+  legend.direction="vertical") +
+  labs(x = lab_pc1,
+       y = lab_pc2,
+       title=title_lab2)  + scale_colour_manual(
+  values = cols2,
+  breaks = breaks2
+) + 
+  guides(color = guide_legend(nrow=length(unique(pcs$type)),override.aes = list(size = legend_size), label.position = "left",label.hjust = 1,title.position='top'))
+
+
+
+```
+
+## Compile and save
+
+```{r}
+
+
+
+layout <- "
+BBCCDDAAA
+EEFFGGAAA
+HHIIJJAAA
+KKLLMMAAA
+NNOOPPAAA
+"
+
+
+
+pdf_width <- 8.3   # Width in inches (a4)
+pdf_height <- 11.7  # Height in inches (a4: 11.7)
+
+
+
+compiled <- guide_area() + pca_all.ic+pca_all.sample+pca_all.data + pca_buccal.ic+pca_buccal.sample+pca_buccal.data + pca_cervical.ic+pca_cervical.sample+pca_cervical.data + pca_blood.ic+pca_blood.sample+pca_blood.data + pca_breast.ic+pca_breast.sample+pca_breast.data 
+compiled <-  compiled + plot_annotation(tag_levels = 'a')  +
+  plot_layout(design = layout, guides = "collect", axes = "collect")
+
+
+
+ggsave(file.path(outPath,"EDx.pdf"), width = pdf_width, height = pdf_height, compiled)
+
+
+```
+
+
+
+
+
+# Extended Data 2: Index training and evaluation 
 
 ## a) Buccal: Internal validation AUC 
 
 ```{r Internal Validation AUC plot1, echo=FALSE, message=FALSE}
  
-ED1a <- plot_performance_compare(training_buccal, training_buccal$AUC_val, sets = 8) + labs(title = 'WID-buccal') + annotate("segment", x = 25000, xend = 30000, y = 1, yend = 0.93, colour = colour.green, size=1, alpha=0.6, arrow=arrow())
+ED1a <- plot_performance_compare(training_buccal, training_buccal$AUC_val, sets = 12) + labs(title = 'WID-buccal') + annotate("segment", x = 25000, xend = 30000, y = 1, yend = 0.93, colour = colour.green, size=1, alpha=0.6, arrow=arrow())
 ED1a
 ```
 
 ## b) Buccal: OOB 
 
 ```{r}
-ED1b <-plot_performance_compare(training_buccal, training_buccal$AUC_oob, sets = 8, legendPos="")+ annotate("segment", x = 25000, xend = 30000, y = 1, yend = 0.89, colour = colour.green, size=1, alpha=0.6, arrow=arrow())
+ED1b <-plot_performance_compare(training_buccal, training_buccal$AUC_oob, sets = 12, legendPos="")+ annotate("segment", x = 25000, xend = 30000, y = 1, yend = 0.89, colour = colour.green, size=1, alpha=0.6, arrow=arrow())
 
 ED1b 
 ```
@@ -1987,14 +2668,14 @@ ED1b
 
 ```{r Internal Validation AUC plot2, echo=FALSE, message=FALSE}
  
-ED1c <- plot_performance_compare(training_cervical, training_cervical$AUC_val, sets = 8,legendPos="") + labs(title = 'WID-cervical') + annotate("segment", x = 25000, xend = 30000, y = 1, yend = 0.93, colour = colour.blue, size=1, alpha=0.6, arrow=arrow())
+ED1c <- plot_performance_compare(training_cervical, training_cervical$AUC_val, sets = 12,legendPos="") + labs(title = 'WID-cervical') + annotate("segment", x = 25000, xend = 30000, y = 1, yend = 0.93, colour = colour.blue, size=1, alpha=0.6, arrow=arrow())
 ED1c
 ```
 
 ## d) Cervical: OOB 
 
 ```{r}
-ED1d <-plot_performance_compare(training_cervical, training_cervical$AUC_oob, sets = 8,legendPos="")  + annotate("segment", x = 25000, xend = 30000, y = 0.93, yend = 0.82, colour = colour.blue, size=1, alpha=0.6, arrow=arrow())
+ED1d <-plot_performance_compare(training_cervical, training_cervical$AUC_oob, sets = 12,legendPos="")  + annotate("segment", x = 25000, xend = 30000, y = 0.93, yend = 0.82, colour = colour.blue, size=1, alpha=0.6, arrow=arrow())
 
 ED1d 
 ```
@@ -2002,14 +2683,14 @@ ED1d
 
 ```{r Internal Validation AUC plot3, echo=FALSE, message=FALSE}
  
-ED1e <- plot_performance_compare(training_blood, training_blood$AUC_val, sets = 8) + labs(title = 'WID-blood') + annotate("segment", x = 25000, xend = 30000, y = 0.9, yend = 0.98, colour = colour.red, size=1, alpha=0.6, arrow=arrow())
+ED1e <- plot_performance_compare(training_blood, training_blood$AUC_val, sets = 12) + labs(title = 'WID-blood') + annotate("segment", x = 25000, xend = 30000, y = 0.9, yend = 0.98, colour = colour.red, size=1, alpha=0.6, arrow=arrow())
 ED1e
 ```
 
 ## f) Blood: OOB 
 
 ```{r}
-ED1f <-plot_performance_compare(training_blood, training_blood$AUC_oob, sets = 8,legendPos="")  + annotate("segment", x = 25000, xend = 30000, y = 1, yend = 0.91, colour = colour.red, size=1, alpha=0.6, arrow=arrow())
+ED1f <-plot_performance_compare(training_blood, training_blood$AUC_oob, sets = 12,legendPos="")  + annotate("segment", x = 25000, xend = 30000, y = 1, yend = 0.91, colour = colour.red, size=1, alpha=0.6, arrow=arrow())
 
 ED1f
 ```
@@ -2022,9 +2703,13 @@ ED1f
 ```{r, message=FALSE, echo=FALSE}
 
 layout <- "
-AB
-CD
-EF
+AA
+BC
+BC
+DE
+DE
+FG
+FG
 "
 
 
@@ -2032,17 +2717,17 @@ pdf_width <- 8.3  # Width in inches (a4)
 pdf_height <- 11.7   # Height in inches (a4: 11.7)
 
 
-compiled <- ED1a + ED1b + ED1c + ED1d + ED1e + ED1f
+compiled <- guide_area() + ED1a + ED1b + ED1c + ED1d + ED1e + ED1f
   
 compiled <-  compiled + plot_annotation(tag_levels = 'a') + 
-  plot_layout(design = layout)
+  plot_layout(design = layout, guides='collect',axes = "collect")
 
-ggsave(file.path(outPath,"ED1.pdf"), width = pdf_width, height = pdf_height, compiled)
-ggsave(file.path(jpgPath,"ED1.jpg"), width = pdf_width, height = pdf_height, compiled)
+ggsave(file.path(outPath,"ED2.pdf"), width = pdf_width, height = pdf_height, compiled)
+ggsave(file.path(jpgPath,"ED2.jpg"), width = pdf_width, height = pdf_height, compiled)
 ```
 
 
-# Extended Data 2: IC and cell types in the discovery and external validation sets
+# Extended Data 3: IC and cell types in the discovery and external validation sets
 
 
 
@@ -2290,19 +2975,10 @@ compiled <- ED1a + ED1b+ ED1c + guide_area() + ED1d+ ED1e+ ED1f
 compiled <-  compiled + plot_annotation(tag_levels = 'a') + 
   plot_layout(design = layout, guides = 'collect')
 
-ggsave(file.path(outPath,"ED2.pdf"), width = pdf_width, height = pdf_height, compiled)
-ggsave(file.path(jpgPath,"ED2.jpg"), width = pdf_width, height = pdf_height, compiled)
+ggsave(file.path(outPath,"ED3.pdf"), width = pdf_width, height = pdf_height, compiled)
+ggsave(file.path(jpgPath,"ED3.jpg"), width = pdf_width, height = pdf_height, compiled)
 ```
 
-
-# Extended Data 3: PCA heatmaps and coloured by ic 
-
-**This figure is edited in illustrator, hence do not regenerate unless data changes**
-
-```{r}
-# Is run from another script and edited in Illustrator: legend title (a) and legends in correct positions (b-d)
-source(here("4-markdown-figures","PCAheatmaps.R"))
-```
 
 
 # Extended Data 4: P value and manhattan plots
@@ -3829,7 +4505,22 @@ ggsave(file.path(jpgPath,"ED11.jpg"), width = pdf_width, height = pdf_height, co
 ```
 
 
+
 #=========DELETED FIGURES========
+
+# Extended Data 3: PCA heatmaps and coloured by ic 
+
+UPDATE APRIL 2024: This figure is replaced by the new Extended Data Figure 1, with all PCA plots.
+
+**This figure is edited in illustrator, hence do not regenerate unless data changes**
+
+```{r}
+# Is run from another script and edited in Illustrator: legend title (a) and legends in correct positions (b-d)
+source(here("4-markdown-figures","PCAheatmaps.R"))
+```
+
+
+
 # Figure 4
 
 **Figure 4: Comparison of buccal and cervical WID-BC indices (adjusted for age and IC): a cross-tissue comparison.**

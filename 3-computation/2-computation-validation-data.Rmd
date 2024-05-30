@@ -214,6 +214,26 @@ roc.test(roc_buccal,roc_cervical, are.paired=T)
 load(here(db_path, "data", "blood", "GSE237036_wang", "beta_merged.Rdata"))
 load(here(db_path, "data", "blood", "GSE237036_wang", "GSE237036_pheno_trimmed.Rdata"))
 
+load(file.path(db_path,"eca/bc-blood/Manuscript/0-data/cent12CT.m.rda")) # epiDISH reference matrix
+
+# Check if pheno and beta are in the same order
+if(!identical(pheno_trimmed$basename, colnames(beta_merged))){
+  cat("WARNING: Basename pheno and beta are not in the same order")
+}else{cat("Basename pheno and beta in the same order")}
+
+# EpiDISH 
+data(cent12CT.m)
+frac.m <- hepidish(beta.m = beta_merged,
+                   ref1.m = centEpiFibIC.m,
+                   ref2.m = cent12CT.m,
+                   h.CT.idx = 3,
+                   method = 'RPC',
+                   maxit = 500)
+
+pheno_trimmed <- cbind(pheno_trimmed, frac.m)
+
+
+
 blood_val <- computeIndices(beta_merged, pheno_trimmed)
 
 # Adjust scores for neutro

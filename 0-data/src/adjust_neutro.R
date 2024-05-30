@@ -18,7 +18,16 @@ adjust_neutro <- function(data,
   if(tissue_adj == F){
     for (i in indices){
       tmp <- data[data$type=="Control",]
-      fit <- lm(tmp[[i]] ~ hepidish_Neutro, data = tmp)
+      
+      if("age" %in% colnames(data)){
+      
+      fit <- lm(tmp[[i]] ~ age + hepidish_Neutro, data = tmp)
+      
+      } else {
+        fit <- lm(tmp[[i]] ~ hepidish_Neutro, data = tmp)
+        
+      }
+      
       data[,paste0(i, appendix)] <- data[[i]] - as.numeric(predict(fit, newdata = data))
     }
   } else {
