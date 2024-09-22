@@ -67,6 +67,9 @@ However, summary data for plotting are provided in the dataframes-plotting folde
 ### Analysis flow:
 
 1. Initially, an EWAS is run in each sample type (1-ewas)
+2. Models are trained to predict BC for each sample type (2-training)
+3. Values are computed in datasets +/- download of aditional datasets (3-computation)
+4. Figures are generated (4-markdown-figures)
 
 ### Expected output
 
