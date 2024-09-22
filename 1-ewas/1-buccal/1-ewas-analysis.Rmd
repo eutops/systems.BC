@@ -6,8 +6,10 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = F, message = F, warning = F)
+knitr::opts_chunk$set(echo = F, message = F, warning = F, eval = F)
+```
 
+```{r libs, eval = T}
 # Install libraries if not available (+ load)
 for (i in c('dplyr', 'ggplot2', 'here', 'fs', 'tibble')){
   if(length(find.package(i, quiet = T)) == 0){
@@ -31,7 +33,7 @@ An EWAS is run on the entire discovery set of buccal samples. Here, we visualise
 
 ## Visualisation of covariates
 
-```{r}
+```{r, eval = T}
 data |> 
   dplyr::filter(set == 'discovery_buccal') |> 
   ggplot(aes(x = type,
@@ -97,7 +99,7 @@ data |>
 
 ## Prepare code for EWAS
 
-```{r}
+```{r, eval = F}
 pheno <- droplevels(data[data$set=='discovery_buccal' & data$sampletype=='buccal',]) |> 
   # set rownames to be compatible with script
   tibble::column_to_rownames('basename')
@@ -126,18 +128,15 @@ write(out, here("1-ewas", "1-buccal", "1-run-db.R"))
 # EWAS Results
 
 
-```{r}
+```{r, eval = T}
 db <- readRDS(here("1-ewas", "1-buccal", "delta-beta.Rds"))
 db <- as.data.frame(db)
-
 
 db |> 
   ggplot(aes(x = type)) +
   geom_histogram(bins = 100)
 
-
 db$padj <- p.adjust(db$type, method = 'BH')
-
 
 db |> 
   tidyr::pivot_longer(db_epithelial:db_immune,

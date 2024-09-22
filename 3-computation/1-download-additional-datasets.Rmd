@@ -30,9 +30,6 @@ source(here("0-data", "src", "computeIndex.R"))
 source(here("0-data", "src", "adjust_age_ic.R"))
 
 load(here("0-data", "data.Rdata"))
-
-
-
 ```
 
 # Helper functions and settings
@@ -173,9 +170,10 @@ data <- merge(data, pheno_trimmed, by = intersect(names(data), names(pheno_trimm
 
 # TCGA
 
-# Additional breast versus normal adjacent dataset
+* Already downloaded for another project using TCGAbiolinks, accessed separately. 
 
-GSE225845
+
+# Additional breast versus normal adjacent datasetL GSE225845
 
 ## Retrieve files from GEO
 
@@ -254,11 +252,6 @@ pheno_trimmed$ic <- rowSums(frac.m[, 3:ncol(frac.m)])
 
 save(pheno_trimmed,file=file.path(dataDir,GSE,"pheno_trimmed.Rdata")) # Save locally 
 ```
-
-
-
-
-
 
 
 

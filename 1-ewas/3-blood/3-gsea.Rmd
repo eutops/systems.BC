@@ -1,0 +1,135 @@
+---
+title: "Enrichment analysis - missMethyl and clusterProfiler"
+output: html_document
+---
+
+# Settings
+
+```{r}
+library(missMethyl)
+library(IlluminaHumanMethylationEPICanno.ilm10b4.hg19)
+library(clusterProfiler)
+library(org.Hs.eg.db)
+library(ReactomePA)
+
+# Settings
+here::i_am("1-ewas/1-buccal/3-dmr-visualisation.Rmd")
+```
+
+
+
+# Load DMPs
+
+```{r}
+blood <- readRDS(here("1-ewas", "3-blood", "delta-beta.Rds")) |> 
+  as.data.frame() |> 
+  dplyr::mutate(padj = p.adjust(type, method = 'BH')) |> 
+  tibble::rownames_to_column('cg')
+
+sigCpGs <- subset(blood, type < 0.05, select = cg)
+sigCpGs <- dplyr::pull(sigCpGs,cg)
+
+# Write DMPs to .txt file for eFORGE upload - max 1000 probes
+sigCpGs <- blood[blood$type < 0.05, ]
+sigCpGs <- sigCpGs[order(sigCpGs$type), ]
+sigCpGs <- head(sigCpGs, 1000)
+sigCpGs <- dplyr::pull(sigCpGs,cg)
+writeLines(sigCpGs, here("1-ewas", "3-blood", "dmps.txt"))
+
+```
+
+
+# missMethyl
+
+## Blood
+
+On CpGs significant before correction (unadjusted p-value)
+
+```{r}
+library(IlluminaHumanMethylation450kanno.ilmn12.hg19)
+gst.go <- gometh(sig.cpg=sigCpGs, collection="GO", array.type="EPIC",
+              plot.bias=TRUE)
+
+gst.kegg <- gometh(sig.cpg=sigCpGs, collection="KEGG")
+
+save(gst.go, gst.kegg,file=here("1-ewas","3-blood","2-output","gsea-missMethyl.Rdata"))
+
+load(here("1-ewas","3-blood","2-output","gsea-missMethyl.Rdata"))
+topGSA(gst.go)
+topGSA(gst.kegg)
+```
+
+
+# ClusterProfiler
+
+```{r}
+anno <- getAnnotation(IlluminaHumanMethylationEPICanno.ilm10b4.hg19)
+anno$gene  <- stringr::str_split(anno$UCSC_RefGene_Name, ";", simplify = T)[,1]
+
+# Universe - all unique genes
+universe <- unique(anno$gene)
+universe <- universe[universe != ""] # remove empty (for those CpGs not in genes)
+```
+
+
+
+
+```{r}
+blood <- readRDS(here("1-ewas", "3-blood", "delta-beta.Rds")) |> 
+  as.data.frame() |> 
+  dplyr::mutate(padj = p.adjust(type, method = 'BH')) |> 
+  tibble::rownames_to_column('cg')
+
+sigCpGs <- subset(blood, type < 0.05, select = cg)
+sigCpGs <- dplyr::pull(sigCpGs,cg)
+
+# Genes of interest (goi) in our list
+goi <- unique(anno[anno$Name %in% sigCpGs,]$gene)
+
+# ENTREZIDS
+universegenes <- bitr(goi, fromType="SYMBOL", toType="ENTREZID", OrgDb="org.Hs.eg.db")
+
+# Biological process
+bp <- clusterProfiler::enrichGO(gene = goi,
+                                universe = universe,
+                                OrgDb = org.Hs.eg.db,
+                                keyType = 'SYMBOL',
+                                ont = "BP",
+                                pAdjustMethod = "BH")
+#bp <- as.data.frame(bp) # extract as dataframe 
+
+# GO molecular function
+mf <- clusterProfiler::enrichGO(gene = goi,
+                                universe = universe,
+                                OrgDb = org.Hs.eg.db,
+                                keyType = 'SYMBOL',
+                                ont = "mf",
+                                pAdjustMethod = "BH")
+#mf <- as.data.frame(mf)
+
+# GO cellular process
+cc <- clusterProfiler::enrichGO(gene = goi,
+                                universe = universe,
+                                OrgDb = org.Hs.eg.db,
+                                keyType = 'SYMBOL',
+                                ont = "CC",
+                                pAdjustMethod = "BH")
+
+#cc <- as.data.frame(cc)
+
+# Reactome pathway enrichment 
+goi_entrez <- bitr(goi, fromType="SYMBOL", toType="ENTREZID", OrgDb="org.Hs.eg.db")
+universe_entrez <- bitr(universe, fromType="SYMBOL", toType="ENTREZID", OrgDb="org.Hs.eg.db")
+epi_hypo_react_all <- enrichPathway(goi_entrez$ENTREZID, organism = "human",
+                                    universe = universe_entrez$ENTREZID,
+                                    pAdjustMethod = "BH", 
+                                    readable = T,
+                                    minGSSize = 3)
+
+
+## save results -------------------
+save(bp, mf, cc, epi_hypo_react_all, file=here("1-ewas","3-blood","2-output","gsea-clusterProfiler.Rdata"))
+
+# Visualize
+bp_dot <- enrichplot::dotplot(bp) 
+```

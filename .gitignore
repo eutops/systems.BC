@@ -13,6 +13,9 @@
 *.svg
 *.xlsx
 *.txt
+*.tex
+*.aux
+*.log
 temp/*
 .DS_Store
 .Rhistory
@@ -21,3 +24,14 @@ temp/*
 .Rproj.user
 *.zip
 *.Rapp.history
+1-ewas/1-buccal/nshd-dmr-plots.R
+1-ewas/1-buccal/2-output/dmr_nshd_val.pdf
+1-ewas/1-buccal/2-output/dmr_nshd_val_within6y.pdf
+1-ewas/1-buccal/1-run-db.R
+1-ewas/2-cervical/1-run-db.R
+1-ewas/3-blood/1-run-db.R
+1-ewas/4-GSE225845/*
+4-markdown-figures/archive/*
+5-supplements/*
+tcga_investigation.pdf
+blood_wang.pdf

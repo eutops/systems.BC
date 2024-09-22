@@ -107,6 +107,7 @@ buccal_val <- adjust_neutro(buccal_val,indices=c("WID_blood_BC","WID_buccal_BC",
 # save for plotting
 save(buccal_val, file=here("0-data","dataframes-plotting","buccal_validation.Rdata"))
 ```
+
 ### AUC
 
 ```{r}
@@ -158,6 +159,7 @@ cervical_val <- adjust_neutro(cervical_val,indices=c("WID_blood_BC"),tissue=F)
 # save for plotting
 save(cervical_val, file=here("0-data","dataframes-plotting","buccal_validation.Rdata"))
 ```
+
 ### AUC
 
 ```{r}
@@ -186,6 +188,7 @@ wilcox_result <- wilcox.test(bc_case_values, control_values)
 # Display the result
 print(wilcox_result)
 ```
+
 ## Comparing buccal and cervical validation 
 
 ```{r}
@@ -256,6 +259,7 @@ blood_wang_val |>
 
 
 ```
+
 ### AUC
 
 ```{r}

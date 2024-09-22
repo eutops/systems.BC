@@ -99,7 +99,6 @@ dev.off()
 
 ## Plot DMRs (validation)
 
-
 ```{r}
 # Load data
 load(here(db_path, "data", "4c-buccal", "beta_merged.Rdata"))

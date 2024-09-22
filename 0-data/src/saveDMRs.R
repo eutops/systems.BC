@@ -10,7 +10,7 @@ saveDMRs <- function(ranges, beta, pheno,
   rownames(mean_beta) <- paste0(r$seqnames, ";", r$start, "-", r$end)
   colnames(mean_beta) <- rownames(pheno)
   
-  data <- getAnnotation(IlluminaHumanMethylationEPICanno.ilm10b4.hg19, lociNames = rownames(beta))
+  data <- getAnnotation(IlluminaHumanMethylationEPICanno.ilm10b2.hg19, lociNames = rownames(beta))
   data$gene <- str_split(data$UCSC_RefGene_Name, ";", simplify = TRUE)[,1]
   
   chr <- character(nrow(r))

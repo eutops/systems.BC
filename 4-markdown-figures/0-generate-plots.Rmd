@@ -1,12 +1,13 @@
 ---
-title: "Plots for manuscript: Cervical and buccal epigenomes are breast tissue surrogates and are reflective of breast cancer status"
+title: "Plots for manuscript: Systems epigenetic approach towards non-invasive breast cancer detection"
 output: html_notebook
 editor_options: 
   chunk_output_type: console
 ---
+
 # Settings 
 
-```{r}
+```{r setup}
 library(patchwork)
 library(ggtext)
 library(ggplot2)
@@ -44,7 +45,7 @@ dbPath <- sub(" Dropbox.*", " Dropbox/Bente Theeuwes", getwd())
 
 ## Load dataframes
 
-```{r}
+```{r load.df}
 # Master dataframe
 load(here("0-data","data.Rdata")) # data
 
@@ -71,7 +72,7 @@ load(here("0-data","dataframes-plotting","3c_blood_validation.Rdata")) # buccal_
 
 ## Calculations for plotting
 
-```{r}
+```{r plot.calc}
 buccal_val$ic_stratification <- buccal_val$ic <= median(buccal_val$ic)
 cervical_val$ic_stratification <- cervical_val$ic <= median(cervical_val$ic)
 blood_val$neutro_stratification <- blood_val$hepidish_Neutro <= median(blood_val$hepidish_Neutro)
@@ -80,7 +81,7 @@ blood_3c_val$neutro_stratification <- blood_3c_val$hepidish_Neutro <= median(blo
 
 ## Order of levels, naming
 
-```{r}
+```{r levels}
 # Here we change the order of the levels, such that AUC calculation goes right.
 buccal_val$type <- factor(buccal_val$type, levels = c('Control', 'BC case')) 
 cervical_val$type <- factor(cervical_val$type, levels = c('Control', 'BC case'))
@@ -90,7 +91,7 @@ blood_3c_val$type <- factor(blood_3c_val$type, levels = c('Control', 'BC case'))
 
 ## Colours and text size
 
-```{r}
+```{r cols}
 pal.jama <- ggsci::pal_jama()(5)
 
 # Two cases: Breast vs Control
@@ -141,11 +142,9 @@ pie_chart_dmps <- function(fileName, supPath=here("5-supplements")){
 # Table 1:  Discovery Sets
 
 
-```{r}
+```{r tab1}
 theme_gtsummary_journal(journal = "jama")
 theme_gtsummary_compact()
-
-
 
 tmp1 <- data |> 
   # Mutate
@@ -163,10 +162,10 @@ tmp1 <- data |>
                                                      "Blood<br>Discovery set")))
 
 # Columns select
-tmp1 <- tmp1 %>% select(set, age, type, BMI, menopause, smoking, stage_T, stage_N, grade, ER, PR)
+tmp1 <- tmp1 |> select(set, age, type, BMI, menopause, smoking, stage_T, stage_N, grade, ER, PR)
 
 # Replace empty columns with NA
-tmp1 <- tmp1 %>% mutate_if(is.character, ~na_if(., ''))
+tmp1 <- tmp1 |> mutate_if(is.character, ~na_if(., ''))
 
 # Smoking
 tmp1$smoking<- as.character(tmp1$smoking)
@@ -202,54 +201,52 @@ tmp1[, columns_to_factor] <- lapply(tmp1[, columns_to_factor], factor)
 
 
 
-tbl <- tmp1 %>%
+tbl <- tmp1 |> 
   tbl_strata(strata = set,
              .tbl_fun= 
-               ~ .x %>%
-               tbl_summary(by = type,
-                           type = list(age ~ "continuous",BMI ~ "continuous"),
-                           statistic = list(age ~ "{mean} ({sd})",BMI ~ "{mean} ({sd})"),
+               ~ .x |> 
+               tbl_summary(by = "type",
+                           type = list("age" ~ "continuous",
+                                       "BMI" ~ "continuous"),
+                           statistic = list("age" ~ "{mean} ({sd})",
+                                            "BMI" ~ "{mean} ({sd})"),
                            missing = "no",
-                           label = list(age ~ "Age at sample taken",
-                                        menopause ~ "Menopausal status",
-                                        type ~ "Type",
-                                        BMI ~ "Body Mass Index",
-                                        smoking ~ "Current smoker",
-                                        stage_T ~ "Stage (T)",
-                                        stage_N ~ "Stage (N)",
-                                        grade ~ "Grade",
-                                        ER ~ "ER",
-                                        PR ~ "PR")) %>%
-               bold_labels() %>%
-               modify_header(update = all_stat_cols() ~"**{level}**<br>n = {n}")) 
+                           label = list("age" = "Age at sample taken",
+                                        "menopause" = "Menopausal status",
+                                        "type" = "Type",
+                                        "BMI" = "Body Mass Index",
+                                        "smoking" = "Current smoker",
+                                        "stage_T" = "Stage (T)",
+                                        "stage_N" = "Stage (N)",
+                                        "grade" = "Grade",
+                                        "ER" = "ER",
+                                        "PR" = "PR")) |> 
+               bold_labels() |> 
+               modify_header(all_stat_cols() ~"**{level}**<br>n = {n}")) 
 
 
-t1 <- tbl %>%
-  as_gt()  %>%
+t1 <- tbl |> 
+  as_gt()  |> 
   text_transform(locations = cells_body(),
                  fn = function(x){
                    paste0(ifelse(x == "0 (0)", "-", ifelse(x == "NA (NA – NA)", "-", x)))
                  }
-  ) %>%
+  ) |> 
   text_transform(locations = cells_body(),
                  fn = function(x){
                    paste0(ifelse(x == "0.0000 (0.0000–0.0000)", "0 (0–0)", x))
                  }
-  ) %>%
+  ) |> 
   text_transform(locations = cells_body(),
                  fn = function(x){
                    paste0(ifelse(x == "0 (NA)", "-", x))
                  }
-  ) %>%
+  ) |> 
   text_transform(locations = cells_body(),
                  fn = function(x){
                    paste0(ifelse(x == "NA (NA)", "-", x))
                  }
-  ) %>%
-  text_transform(locations = cells_body(),
-                 fn = function(x){
-                   gsub("[.]", "·", x)
-                 }) %>%
+  ) |> 
   tab_options(
     table.width = px(550),
     table.font.size = 12,
@@ -257,14 +254,15 @@ t1 <- tbl %>%
   ) |> 
   opt_stylize(style = 4)
 
-t1 %>% gtsave(file.path(outPath,"T1.html"))
+t1 |> 
+  gtsave(file.path(outPath,"T1.html"))
 
 # to pdf
-pagedown::chrome_print(file.path(outPath,"T1.html"), output = file.path(outPath,"T1.pdf"))
+pagedown::chrome_print(file.path(outPath,"T1.html"),
+                       output = file.path(outPath,"T1.pdf"))
 ```
 
 # Table 2:  Validation Sets 
-
 
 ```{r}
 theme_gtsummary_journal(journal = "jama")
@@ -292,10 +290,10 @@ tmp1 <- data |>
                                                      "Blood<br>GSE237036")))
 
 # Columns select
-tmp1 <- tmp1 %>% select(set, age, type, BMI, menopause, smoking, stage_T, stage_N, grade, ER, PR)
+tmp1 <- tmp1 |> select(set, age, type, BMI, menopause, smoking, stage_T, stage_N, grade, ER, PR)
 
 # Replace empty columns with NA
-tmp1 <- tmp1 %>% mutate_if(is.character, ~na_if(., ''))
+tmp1 <- tmp1 |> mutate_if(is.character, ~na_if(., ''))
 
 # Re-naming, making sure entries add up
 
@@ -333,54 +331,50 @@ tmp1[, columns_to_factor] <- lapply(tmp1[, columns_to_factor], factor)
 
 
 
-tbl <- tmp1 %>%
+tbl <- tmp1 |>
   tbl_strata(strata = set,
              .tbl_fun= 
-               ~ .x %>%
+               ~ .x |>
                tbl_summary(by = type,
                            type = list(age ~ "continuous",BMI ~ "continuous"),
                            statistic = list(age ~ "{mean} ({sd})",BMI ~ "{mean} ({sd})"),
                            missing = "no",
-                           label = list(age ~ "Age at sample taken",
-                                        menopause ~ "Menopausal status",
-                                        type ~ "Type",
-                                        BMI ~ "Body Mass Index",
-                                        smoking ~ "Current smoker",
-                                        stage_T ~ "Stage (T)",
-                                        stage_N ~ "Stage (N)",
-                                        grade ~ "Grade",
-                                        ER ~ "ER",
-                                        PR ~ "PR")) %>%
-               bold_labels() %>%
-               modify_header(update = all_stat_cols() ~"**{level}**<br>n = {n}")) 
+                           label = list(age = "Age at sample taken",
+                                        menopause = "Menopausal status",
+                                        type = "Type",
+                                        BMI = "Body Mass Index",
+                                        smoking = "Current smoker",
+                                        stage_T = "Stage (T)",
+                                        stage_N = "Stage (N)",
+                                        grade = "Grade",
+                                        ER = "ER",
+                                        PR = "PR")) |>
+               bold_labels() |>
+               modify_header(all_stat_cols() ~"**{level}**<br>n = {n}")) 
 
 
-t1 <- tbl %>%
-  as_gt()  %>%
+t1 <- tbl |>
+  as_gt()  |>
   text_transform(locations = cells_body(),
                  fn = function(x){
                    paste0(ifelse(x == "0 (0)", "-", ifelse(x == "NA (NA – NA)", "-", x)))
                  }
-  ) %>%
+  ) |>
   text_transform(locations = cells_body(),
                  fn = function(x){
                    paste0(ifelse(x == "0.0000 (0.0000–0.0000)", "0 (0–0)", x))
                  }
-  ) %>%
+  ) |>
   text_transform(locations = cells_body(),
                  fn = function(x){
                    paste0(ifelse(x == "0 (NA)", "-", x))
                  }
-  ) %>%
+  ) |>
   text_transform(locations = cells_body(),
                  fn = function(x){
                    paste0(ifelse(x == "NA (NA)", "-", x))
                  }
-  ) %>%
-  text_transform(locations = cells_body(),
-                 fn = function(x){
-                   gsub("[.]", "·", x)
-                 }) %>%
+  ) |>
   tab_options(
     table.width = px(550),
     table.font.size = 12,
@@ -388,7 +382,7 @@ t1 <- tbl %>%
   ) |> 
   opt_stylize(style = 4)
 
-t1 %>% gtsave(file.path(outPath,"T2.html"))
+t1 |> gtsave(file.path(outPath,"T2.html"))
 
 # to pdf
 pagedown::chrome_print(file.path(outPath,"T2.html"), output = file.path(outPath,"T2.pdf"))
@@ -459,8 +453,6 @@ pdf_height <- 11.7   # Height in inches (a4: 11.7)
 compiled <-  BHo_CHer$plot + Breast_BHo_CHer + guide_area() + Breast_BHer_CHer  + wrap_elements(overall) + BHo_CHo$plot +  Breast_BHo_CHo + BHer_CHo$plot + Breast_BHer_CHo + plot_layout(guides = 'collect')
   
   
-
-  
 compiled <-  compiled + plot_annotation(tag_levels = 'a') + 
   plot_layout(design = layout)
 
@@ -474,14 +466,13 @@ ggsave(file.path(jpgPath,"F1_new.jpg"), width = pdf_width, height = pdf_height, 
 ## a) WID-buccal versus ic
 
 ```{r}
-
 a2 <- ggplot(data = buccal_val, aes(x = ic, y = WID_buccal_BC, color = type, fill = factor(type))) +
-  geom_point(alpha=0.2,size=2) +  # Plot points
+  geom_point(alpha=0.4,size=1) +  # Plot points
   geom_smooth(method = "lm", se = TRUE, aes(group = type)) +
   scale_color_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control)) +  # Add linear fit with confidence interval
   labs(
     y = "WID-buccal-BC index",
-    x = "Immune Cell proportion"
+    x = "immune cell proportion"
   ) +
   theme_minimal() +
   theme(legend.title = element_blank()) +
@@ -503,7 +494,7 @@ coord_save_excel(a2, coordPath)
 ```{r}
 
 b2 <- ggplot(data = buccal_val, aes(x = age, y = WID_buccal_BC, color = type, fill = factor(type))) +
-  geom_point(alpha=0.2,size=2) +  # Plot points
+  geom_point(alpha=0.4,size=1) +  # Plot points
   geom_smooth(method = "lm", se = TRUE, aes(group = type)) +
   scale_color_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control)) +  # Add linear fit with confidence interval
   labs(
@@ -523,6 +514,7 @@ b2
 coord_save_excel(b2, coordPath)
 
 ```
+
 ## c) Boxplot WID-buccal (ic and age-adjusted)
 
 ```{r}
@@ -555,12 +547,10 @@ coord_save_excel(c2, coordPath)
 ## d) WID-buccal AUC
 
 ```{r}
-
-
 # Assuming buccal_val is your data frame
-less <- buccal_val %>%
+less <- buccal_val |>
   filter(ic_stratification == TRUE)
-more <- buccal_val %>%
+more <- buccal_val |>
   filter(ic_stratification == F)
 
 
@@ -573,24 +563,17 @@ d2
 coord_save_excel(d2, coordPath)
 ```
 
-
-
-
-
-
-
-
 ## e) WID-cervical versus ic
 
 ```{r}
 
 e2 <- ggplot(data = cervical_val, aes(x = ic, y = WID_cervical_BC, color = type, fill = factor(type))) +
-  geom_point(alpha=0.2,size=2) +  # Plot points
+  geom_point(alpha=0.4,size=1) +  # Plot points
   geom_smooth(method = "lm", se = TRUE, aes(group = type)) +
   scale_color_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control)) +  # Add linear fit with confidence interval
   labs(
     y = "WID-cervical-BC index",
-    x = "Immune Cell proportion"
+    x = "immune cell proportion"
   ) +
   theme_minimal() +
   theme(legend.title = element_blank()) +
@@ -605,12 +588,12 @@ e2
 coord_save_excel(e2, coordPath)
 
 ```
+
 ## f) WID-cervical versus age
 
 ```{r}
-
 f2 <- ggplot(data = cervical_val, aes(x = age, y = WID_cervical_BC, color = type, fill = factor(type))) +
-  geom_point(alpha=0.2,size=2) +  # Plot points
+  geom_point(alpha=0.4,size=1) +  # Plot points
   geom_smooth(method = "lm", se = TRUE, aes(group = type)) +
   scale_color_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control)) +  # Add linear fit with confidence interval
   labs(
@@ -630,10 +613,10 @@ f2
 coord_save_excel(f2, coordPath)
 
 ```
+
 ## g) Boxplot WID-cervical (ic and age-adjusted)
 
 ```{r}
-
 g2 <- ggplot(cervical_val,
              aes(x = factor(type), y = WID_cervical_BC_adj)) +
   geom_boxplot(aes(fill = type),
@@ -661,12 +644,9 @@ coord_save_excel(g2, coordPath)
 ## h) WID-cervical AUC
 
 ```{r}
-
-
-
-less <- cervical_val %>%
+less <- cervical_val |>
   filter(ic_stratification == TRUE)
-more <- cervical_val %>%
+more <- cervical_val |>
   filter(ic_stratification == F)
 
 
@@ -680,21 +660,16 @@ coord_save_excel(h2, coordPath)
 ```
 
 
-
-
-
-
 ## i) WID-blood versus neutro
 
 ```{r}
-
 i2 <- ggplot(data = blood_val, aes(x = hepidish_Neutro, y = WID_blood_BC, color = type, fill = factor(type))) +
-  geom_point(alpha=0.2,size=2) +  # Plot points
+  geom_point(alpha=0.4,size=1) +  # Plot points
   geom_smooth(method = "lm", se = TRUE, aes(group = type)) +
   scale_color_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control)) +  # Add linear fit with confidence interval
   labs(
     y = "WID-blood-BC index",
-    x = "Neutrophil proportion"
+    x = "neutrophil proportion"
   ) +
   theme_minimal() +
   theme(legend.title = element_blank()) +
@@ -710,12 +685,11 @@ i2
 
 # Save coordinates
 coord_save_excel(i2, coordPath)
-
 ```
+
 ## j) Boxplot WID-blood (neutro-adjusted)
 
 ```{r}
-
 j2 <- ggplot(blood_val,
              aes(x = factor(type), y = WID_blood_BC_adj)) +
   geom_boxplot(aes(fill = type),
@@ -739,15 +713,14 @@ j2
 # Save coordinates
 coord_save_excel(j2, coordPath)
 ```
+
 ## k) WID-blood AUC
 
 ```{r}
-
-less <- blood_val %>%
+less <- blood_val |>
   filter(neutro_stratification == TRUE)
-more <- blood_val %>%
+more <- blood_val |>
   filter(neutro_stratification == F)
-
 
 k2 <- plot_triple_roc(factor(blood_val$type), blood_val$WID_blood_BC_adj, factor(less$type), less$WID_blood_BC_adj, factor(more$type), more$WID_blood_BC_adj, col1 = colour.green, col2 = colour.blue, col3 = colour.sum, title1 = "All", title2 = paste("Neutro<", round(median(blood_val$hepidish_Neutro), 2), sep = ""), title3 = paste("Neutro>", round(median(blood_val$hepidish_Neutro), 2), sep = ""), style = "default",
                             direction1 = "<",direction2 = "<", generalTitle="", textCol1 = "black",textCol3="black",textSize=2.1)
@@ -757,7 +730,6 @@ k2
 # Save coordinates
 coord_save_excel(k2, coordPath)
 ```
-
 
 
 ## Compile and save
@@ -780,8 +752,8 @@ compiled <- a2 + b2 + c2 + d2 + e2 + f2 + g2 + h2 + guide_area() + i2 + j2 + k2
 compiled <-  compiled + plot_annotation(tag_levels = 'a') + 
   plot_layout(design = layout, guides = 'collect')
 
-ggsave(file.path(outPath,"F2.pdf"), width = pdf_width, height = pdf_height, compiled)
-ggsave(file.path(jpgPath,"F2.jpg"), width = pdf_width, height = pdf_height, compiled)
+ggsave(file.path(outPath,"F2.pdf"), width = pdf_width, height = pdf_height, compiled) # Manually fix legend in illustrator
+# ggsave(file.path(jpgPath,"F2.jpg"), width = pdf_width, height = pdf_height, compiled)
 ```
 
 # Figure 3
@@ -791,21 +763,18 @@ Non-significant comparisons are commented out for cleanliness of the figures. Ea
 ## a) WID-buccal: association with stage
 
 ```{r}
-
-
-
 a3 <- buccal_val |> 
   dplyr::mutate(stage = ifelse(type == 'Control', 'Control', stage_T)) |> 
   dplyr::filter(stage != '') |> 
   ggplot(aes(x = stage, y = WID_buccal_BC_adj)) +
   geom_boxplot(aes(fill = type),
-               alpha = 0.2) +
+               alpha = 0.2,outlier.shape = NA) +
   ggbeeswarm::geom_quasirandom(aes(colour = type),
                                alpha = 0.5, size = 0.5) +
   scale_color_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control)) +  # Add linear fit with confidence interval
   labs(
     x = '',
-    y = "WID-buccal-BC index\nadjusted for age and IC") +
+    y = "WID-buccal-BC index\nadjusted for age and ic") +
   theme_minimal() +
   theme(legend.title = element_blank()) +
   theme(legend.position = "top") +  # Remove legend
@@ -833,15 +802,13 @@ coord_save_excel(a3, coordPath)
 
 
 ```{r}
-
-
 b3 <- buccal_val |> 
   dplyr::mutate(grade = ifelse(type == 'Control', 'Control', gsub("Grade ", "", grade)))  |> 
   dplyr::filter(grade != 'Unknown') |> 
   ggplot(aes(x = grade,
              y = WID_buccal_BC_adj)) +
   geom_boxplot(aes(fill = type),
-               alpha = 0.2) +
+               alpha = 0.2,outlier.shape = NA) +
   ggbeeswarm::geom_quasirandom(aes(colour = type),
                                alpha = 0.5, size = 0.5) +
   scale_color_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control)) +  # Add linear fit with confidence interval
@@ -884,7 +851,7 @@ c3 <- buccal_val |>
   ggplot(aes(x = ERstat,
              y = WID_buccal_BC_adj)) +
   geom_boxplot(aes(fill = type),
-               alpha = 0.2) +
+               alpha = 0.2,outlier.shape = NA) +
   ggbeeswarm::geom_quasirandom(aes(colour = type),
                                alpha = 0.5, size = 0.5) +
   scale_color_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control)) +  # Add linear fit with confidence interval
@@ -923,7 +890,7 @@ d3 <- buccal_val |>
   ggplot(aes(x = PRstat,
              y = WID_buccal_BC_adj)) +
   geom_boxplot(aes(fill = type),
-               alpha = 0.2) +
+               alpha = 0.2,outlier.shape = NA) +
   ggbeeswarm::geom_quasirandom(aes(colour = type),
                                alpha = 0.5, size = 0.5) +
   scale_color_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control)) +  # Add linear fit with confidence interval
@@ -963,13 +930,13 @@ e3 <- buccal_val |>
   ggplot(aes(x = HERstat,
              y = WID_buccal_BC_adj)) +
   geom_boxplot(aes(fill = type),
-               alpha = 0.2) +
+               alpha = 0.2,outlier.shape = NA) +
   ggbeeswarm::geom_quasirandom(aes(colour = type),
                                alpha = 0.5, size = 0.5) +
   scale_color_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control)) +  # Add linear fit with confidence interval
   labs(
     x = '',
-    y = "WID-buccal-BC index\nadjusted for age and IC") +
+    y = "WID-buccal-BC index\nadjusted for age and ic") +
   theme_minimal() +
   theme(legend.title = element_blank()) +
   theme(legend.position = "none", axis.text.x = element_text(angle = 45, hjust = 1)) +  # Remove legend
@@ -987,13 +954,14 @@ e3
 # Save coordinates
 coord_save_excel(e3, coordPath)
 ```
+
 ## f) WID-buccal: PRS with WID-BC-Buccal
 
 ```{r}
 
 
 f3 <- ggplot(buccal_val, aes(x = polygenic_risk_score_bc, y = WID_buccal_BC_adj, color = type, fill = factor(type))) +
-  geom_point(alpha=0.2,size=2) +  # Plot points
+  geom_point(alpha=0.4,size=1) +  # Plot points
   geom_smooth(method = "lm", se = TRUE, aes(group = type)) +
   scale_color_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control)) +  # Add linear fit with confidence interval
   labs(
@@ -1003,11 +971,7 @@ f3 <- ggplot(buccal_val, aes(x = polygenic_risk_score_bc, y = WID_buccal_BC_adj,
   theme(legend.position = "top") +  # Remove legend
   theme(panel.background = element_blank()) +  
   stat_cor(method = "pearson", show.legend = FALSE, label.x.npc='left', label.y.npc='top', size = 2.8) + 
-  scale_fill_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control))  +  
-  guides(color = guide_colorbar(title = "Horsepower"),
-    shape = guide_legend(title = "Weight"), size = guide_legend(title = "Gear")
-  ) 
-
+  scale_fill_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control)) 
 f3
 
 
@@ -1015,6 +979,7 @@ f3
 coord_save_excel(f3, coordPath)  
 
 ```
+
 ## g) WID-buccal: association with BRCAmut status
 
 ```{r}
@@ -1026,7 +991,7 @@ brca_buccal <- droplevels(brca_val[brca_val$sampletype=='buccal',])
 g3 <- brca_buccal |> 
   ggplot(aes(x = factor(type), y = WID_buccal_BC_adj))  +
   geom_boxplot(aes(fill = type),
-               alpha = 0.3) +
+               alpha = 0.3,outlier.shape = NA) +
   ggbeeswarm::geom_quasirandom(aes(colour = type),
                                alpha = 0.5, size = 0.5) +  # Add beeswarm plot
   labs(x = "", y = "") +
@@ -1052,9 +1017,9 @@ coord_save_excel(g3, coordPath)
 
 
 ```{r}
-filtered_BRCA2 <- brca_buccal %>%
+filtered_BRCA2 <- brca_buccal |>
   filter(type == 'Control' | type == 'BRCA2')
-filtered_BRCA1 <- brca_buccal %>%
+filtered_BRCA1 <- brca_buccal |>
   filter(type == 'Control' | type == 'BRCA1')
 
 # Here we change the order of the levels, such that AUC calculation goes right.
@@ -1082,13 +1047,13 @@ i3 <- cervical_val |>
   dplyr::filter(stage != '') |> 
   ggplot(aes(x = stage, y = WID_cervical_BC_adj)) +
   geom_boxplot(aes(fill = type),
-               alpha = 0.2) +
+               alpha = 0.2,outlier.shape = NA) +
   ggbeeswarm::geom_quasirandom(aes(colour = type),
                                alpha = 0.5, size = 0.5) +
   scale_color_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control)) +  # Add linear fit with confidence interval
   labs(
     x = '',
-    y = "WID-cervical-BC index\nadjusted for age and IC") +
+    y = "WID-cervical-BC index\nadjusted for age and ic") +
   theme_minimal() +
   theme(legend.title = element_blank()) +
   theme(legend.position = "none") +  # Remove legend
@@ -1124,7 +1089,7 @@ j3 <- cervical_val |>
   ggplot(aes(x = grade,
              y = WID_cervical_BC_adj)) +
   geom_boxplot(aes(fill = type),
-               alpha = 0.2) +
+               alpha = 0.2,outlier.shape = NA) +
   ggbeeswarm::geom_quasirandom(aes(colour = type),
                                alpha = 0.5, size = 0.5) +
   scale_color_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control)) +  # Add linear fit with confidence interval
@@ -1167,7 +1132,7 @@ k3 <- cervical_val |>
   ggplot(aes(x = ERstat,
              y = WID_cervical_BC_adj)) +
   geom_boxplot(aes(fill = type),
-               alpha = 0.2) +
+               alpha = 0.2,outlier.shape = NA) +
   ggbeeswarm::geom_quasirandom(aes(colour = type),
                                alpha = 0.5, size = 0.5) +
   scale_color_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control)) +  # Add linear fit with confidence interval
@@ -1206,7 +1171,7 @@ l3 <- cervical_val |>
   ggplot(aes(x = PRstat,
              y = WID_cervical_BC_adj)) +
   geom_boxplot(aes(fill = type),
-               alpha = 0.2) +
+               alpha = 0.2,outlier.shape = NA) +
   ggbeeswarm::geom_quasirandom(aes(colour = type),
                                alpha = 0.5, size = 0.5) +
   scale_color_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control)) +  # Add linear fit with confidence interval
@@ -1238,7 +1203,6 @@ coord_save_excel(l3, coordPath)
 
 ```{r}
 
-
 m3 <- cervical_val |> 
   dplyr::mutate(HERstat = ifelse(type == 'Control', 'Control',
                                  ifelse(HER2 == 'Pos', 'HER2+', "HER2-")),
@@ -1247,13 +1211,13 @@ m3 <- cervical_val |>
   ggplot(aes(x = HERstat,
              y = WID_cervical_BC_adj)) +
   geom_boxplot(aes(fill = type),
-               alpha = 0.2) +
+               alpha = 0.2,outlier.shape = NA) +
   ggbeeswarm::geom_quasirandom(aes(colour = type),
                                alpha = 0.5, size = 0.5) +
   scale_color_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control)) +  # Add linear fit with confidence interval
   labs(
     x = '',
-    y = "WID-cervical-BC index\nadjusted for age and IC"
+    y = "WID-cervical-BC index\nadjusted for age and ic"
   ) +
   theme_minimal() +
   theme(legend.title = element_blank()) +
@@ -1280,7 +1244,7 @@ coord_save_excel(m3, coordPath)
 
 
 n3 <- ggplot(cervical_val, aes(x = polygenic_risk_score_bc, y = WID_cervical_BC_adj, color = type, fill = factor(type))) +
-  geom_point(alpha=0.2,size=2) +  # Plot points
+  geom_point(alpha=0.4,size=1) +  # Plot points
   geom_smooth(method = "lm", se = TRUE, aes(group = type)) +
   scale_color_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control)) +  # Add linear fit with confidence interval
   labs(
@@ -1311,7 +1275,7 @@ brca_cervical <- droplevels(brca_val[brca_val$sampletype=='cervical',])
 o3 <- brca_cervical |> 
   ggplot(aes(x = factor(type), y = WID_cervical_BC_adj))  +
   geom_boxplot(aes(fill = type),
-               alpha = 0.3) +
+               alpha = 0.3,outlier.shape = NA) +
   ggbeeswarm::geom_quasirandom(aes(colour = type),
                                alpha = 0.5, size = 0.5) +  # Add beeswarm plot
   labs(x = "", y = "") +
@@ -1338,9 +1302,9 @@ coord_save_excel(o3, coordPath)
 
 
 ```{r}
-filtered_BRCA2 <- brca_cervical %>%
+filtered_BRCA2 <- brca_cervical |>
   filter(type == 'Control' | type == 'BRCA2')
-filtered_BRCA1 <- brca_cervical %>%
+filtered_BRCA1 <- brca_cervical |>
   filter(type == 'Control' | type == 'BRCA1')
 
 # Here we change the order of the levels, such that AUC calculation goes right.
@@ -1356,6 +1320,7 @@ p3
   # Save coordinates
 coord_save_excel(p3, coordPath) 
 ```
+
 ## q) WID-blood: association with BRCAmut status
 
 ```{r}
@@ -1367,7 +1332,7 @@ brca_blood <- droplevels(brca_val[brca_val$sampletype=='blood',])
 q3 <- brca_blood |> 
   ggplot(aes(x = factor(type), y = WID_blood_BC_adj))  +
   geom_boxplot(aes(fill = type),
-               alpha = 0.3) +
+               alpha = 0.3,outlier.shape = NA) +
   ggbeeswarm::geom_quasirandom(aes(colour = type),
                                alpha = 0.5, size = 0.5) +  # Add beeswarm plot
   labs(x = "", y = "WID-blood-BC index\nadjusted for neutrophils") +
@@ -1394,9 +1359,9 @@ coord_save_excel(q3, coordPath)
 
 
 ```{r}
-filtered_BRCA2 <- brca_blood %>%
+filtered_BRCA2 <- brca_blood |>
   filter(type == 'Control' | type == 'BRCA2')
-filtered_BRCA1 <- brca_blood %>%
+filtered_BRCA1 <- brca_blood |>
   filter(type == 'Control' | type == 'BRCA1')
 
 # Here we change the order of the levels, such that AUC calculation goes right.
@@ -1440,8 +1405,8 @@ compiled <- a3 + b3 + c3 + d3 + e3 + f3 + g3 + h3+ i3 + j3 + k3+ l3 + m3 + n3 + 
 compiled <-  compiled + plot_annotation(tag_levels = 'a') + 
   plot_layout(design = layout, guides = 'collect')
 
-ggsave(file.path(outPath,"F3.pdf"), width = pdf_width, height = pdf_height, compiled)
-ggsave(file.path(jpgPath,"F3.jpg"), width = pdf_width, height = pdf_height, compiled)
+ggsave(file.path(outPath,"F3.pdf"), width = pdf_width, height = pdf_height, compiled) # fix labels in illustrator
+# ggsave(file.path(jpgPath,"F3.jpg"), width = pdf_width, height = pdf_height, compiled)
 ```
 
 
@@ -1449,11 +1414,13 @@ ggsave(file.path(jpgPath,"F3.jpg"), width = pdf_width, height = pdf_height, comp
 # Figure 4
 
 ## a) Boxplot tissue at risk
+
 ```{r}
 library(dplyr)
+library(ggh4x)
 
 # Rename BRCA1/BRCA2 
-tissue_at_risk_val <- tissue_at_risk_val %>%
+tissue_at_risk_val <- tissue_at_risk_val |>
   mutate(type = ifelse(type %in% c("Risk_reduction_BRCA1", "Risk_reduction_BRCA2"), "Risk_reduction_BRCA1_BRCA2", type))
 
 
@@ -1475,44 +1442,71 @@ tissue_at_risk_long$index <- factor(tissue_at_risk_long$index, levels=c("WID_buc
 # change order of type for plotting
 tissue_at_risk_long$type <- factor(tissue_at_risk_long$type, levels = c("Normal", "Risk_reduction_BRCA1_BRCA2", "Normal_adjacent", "Triple_negative_tumour"))
 
+# Only colour strips in x-direction
+strip <- strip_themed(background_x = elem_list_rect(fill = c(colour.green, colour.blue, colour.red),
+                                                    color = NA),
+                      text_x = element_text(colour = 'white',
+                                            face = 'bold'))
+
+cols <- ggsci::pal_npg()(4)
 
 # Facet wrap by index
-a4 <- ggplot(tissue_at_risk_long, aes(x = type, y = score)) +
-  geom_boxplot(aes(fill = index), cex = 0.5, fatten = 2) +
-  ggbeeswarm::geom_beeswarm(alpha = 0.5, size = 0.5) +
+a4 <- ggplot(tissue_at_risk_long,
+             aes(x = type,
+                 y = score)) +
+  
+  geom_boxplot(aes(fill = type),
+               cex = 0.5, fatten = 2,
+               outlier.shape = NA,
+               alpha = 0.4) +
+  
+  ggbeeswarm::geom_beeswarm(aes(colour = type),
+                            alpha = 0.8, size = 1) +
+  
   labs(
     x = "",
     y = "Index"
   )   + 
+  
   # geom_line(aes(group=pairs), size=0.5, color='gray', alpha=0.6) +
   theme_minimal() +
-  scale_fill_manual(labels = c("WID-buccal-BC","WID-cervical-BC","WID-blood-BC"), values = c("WID_buccal_BC_adj" = colour.green, "WID_cervical_BC_adj" = colour.blue, "WID_blood_BC_adj" = colour.red)) +
-  theme(legend.position = "top", 
-        axis.text.x = element_text(angle = 45, hjust = 1, size=7)) +
-  scale_x_discrete(labels = c("Normal tissue", "Normal from\nBRCA1/BRCA2\nmutation carrier","Normal-adjacent\ntissue", "Triple negative\nbreast cancer\ntissue")) +
-  facet_wrap(~index, labeller = labeller(index = c("WID_buccal_BC_adj" = "WID-buccal-BC", "WID_cervical_BC_adj" = "WID-cervical-BC", "WID_blood_BC_adj" = "WID-blood-BC")),
-             scales = 'free') +
+  
+  scale_fill_manual(values = rev(cols),
+                    aesthetics = c("colour", "fill"),
+                 labels = c("Normal tissue",
+                 "Normal from\nBRCA1/BRCA2\nmutation carrier",
+                 "Normal-adjacent\ntissue", "Triple negative\nbreast cancer\ntissue"),
+                 name = '') +
+  
+  theme(legend.position = "right", 
+        axis.text.x = element_blank()) +
+  
+  facet_wrap2(~index, labeller = labeller(index = c("WID_buccal_BC_adj" = "WID-buccal-BC",
+                                                    "WID_cervical_BC_adj" = "WID-cervical-BC",
+                                                    "WID_blood_BC_adj" = "WID-blood-BC")),
+             scales = 'free',
+             strip = strip) +
+  
   ggpubr::stat_compare_means(comparisons = list(
    c("Normal", "Risk_reduction_BRCA1_BRCA2"), 
   #  c("Normal", "Normal_adjacent"), # insignificant in all
     c("Normal", "Triple_negative_tumour")),
-                               label = 'p.format', step.increase = 0.13, vjust = 0,textsize=1, hide.ns = T) +
-
-  labs(fill = "Index")  +
+                               label = 'p.format',
+  step.increase = 0.13, vjust = 0,
+  size=3.2, hide.ns = T) +
   labs(y = '',
        title = 'Tissue at risk set (EPIC array)') +
    scale_y_continuous(expand = expansion(mult = c(0, 0.1)))
 
 print(a4)
 
-  # Save coordinates
+# Save coordinates
 coord_save_excel(a4, coordPath) 
 ```
 
 ## b) AUC tissue at risk normal-adjacent
 
 ```{r}
-
 ## Normal-adjacent versus triple negative
 tmp <- tissue_at_risk_val |> 
   dplyr::filter(type %in% c("Normal_adjacent","Triple_negative_tumour")) |> 
@@ -1554,33 +1548,53 @@ tcga_long$index <- factor(tcga_long$index, levels = c('WID_buccal_BC_adj', 'WID_
 # facet wrap by index
 c4 <- tcga_long |>
   dplyr::filter(barcode3 %in% tmp$barcode3) |>
-  ggplot(aes(x = type, y = score)) +
-  geom_boxplot(aes(fill = index), cex = 0.5, fatten = 2) +
-  ggbeeswarm::geom_beeswarm(alpha = 0.5, size = 0.5) +
+  
+  ggplot(aes(x = type,
+             y = score)) +
+  
+  geom_boxplot(aes(fill = type),
+               cex = 0.5, fatten = 2,
+               outlier.shape = NA,
+               alpha = 0.4) +
   geom_line(aes(group = barcode3),
-            alpha = 0.5,
-            colour = 'gray',
-            linewidth = 0.5) +
-  labs(x = "",
-       y = "Index") +
+            size = 0.2, colour = 'grey80') +
+  
+  ggbeeswarm::geom_beeswarm(aes(colour = type),
+                            alpha = 0.8, size = 1) +
+  
+  labs(
+    x = "",
+    y = "Index"
+  )   + 
+  
+  # geom_line(aes(group=pairs), size=0.5, color='gray', alpha=0.6) +
   theme_minimal() +
-  scale_x_discrete(labels = c("Matched\nnormal tissue", 'Breast cancer\ntissue')) +
-  scale_fill_manual(labels = c("WID-buccal-BC", "WID-cervical-BC", "WID-blood-BC"), values = c("WID_cervical_BC_adj" = colour.blue, "WID_buccal_BC_adj" = colour.green, "WID_blood_BC_adj" = colour.red)) +
-  theme(legend.position = "top",
-        axis.text.x = element_text(angle = 45, hjust = 1)) +
-  facet_wrap(~index,scales = 'free',labeller = labeller(index = c("WID_buccal_BC_adj" = "WID-buccal-BC", "WID_cervical_BC_adj" = "WID-cervical-BC", "WID_blood_BC_adj" = "WID-blood-BC"))) +
+  
+  scale_fill_manual(values = rev(cols)[c(3, 4)],
+                    aesthetics = c("colour", "fill"),
+                 labels = c("Matched\nnormal tissue", 'Breast cancer\ntissue'),
+                 name = '') +
+  
+  theme(legend.position = "right", 
+        axis.text.x = element_blank()) +
+  
+  facet_wrap2(~index, labeller = labeller(index = c("WID_buccal_BC_adj" = "WID-buccal-BC",
+                                                    "WID_cervical_BC_adj" = "WID-cervical-BC",
+                                                    "WID_blood_BC_adj" = "WID-blood-BC")),
+             scales = 'free',
+             strip = strip) +
+  
   ggpubr::stat_compare_means(comparisons = list(c("Control", "Cancer")),
-                             label = 'p.format',
-                             hide.ns = T, step.increase = 0.13, vjust = 0,textsize=1) +
- labs(fill = "index") +
+                               label = 'p.format',
+  step.increase = 0.13, vjust = 0,
+  size=3.2, hide.ns = T) +
   labs(y = '',
        title = 'TCGA Set (450K array)') +
    scale_y_continuous(expand = expansion(mult = c(0, 0.1)))
 
-
 print(c4)
 
-  # Save coordinates
+# Save coordinates
 coord_save_excel(c4, coordPath) 
 ```
 
@@ -1596,7 +1610,7 @@ d4 <- plot_triple_roc(factor(tcga_val$type), tcga_val$WID_buccal_BC_adj, factor(
 
 d4
 
-  # Save coordinates
+# Save coordinates
 coord_save_excel(d4, coordPath) 
 
 
@@ -1618,30 +1632,51 @@ GSE225845_long$type <- factor(GSE225845_long$type, levels=c("normal","adj_norm",
 GSE225845_long$index <- factor(GSE225845_long$index, levels=c("WID_buccal_BC_adj","WID_cervical_BC_adj","WID_blood_BC_adj"))
 
 # Facet wrap by index
-e4 <- ggplot(GSE225845_long, aes(x = type, y = score)) +
-  geom_boxplot(aes(fill = index), cex = 0.5, fatten = 2) +
-  ggbeeswarm::geom_beeswarm(alpha = 0.5, size = 0.5) +
+e4 <- GSE225845_long |> 
+  
+  ggplot(aes(x = type,
+             y = score)) +
+  
+  geom_boxplot(aes(fill = type),
+               cex = 0.5, fatten = 2,
+               outlier.shape = NA,
+               alpha = 0.4) +
+  
+  ggbeeswarm::geom_beeswarm(aes(colour = type),
+                            alpha = 0.6, size = 1) +
+  
   labs(
     x = "",
     y = "Index"
   )   + 
-  # geom_line(aes(group=pairs), size=0.5, color='gray', alpha=0.6) +
   theme_minimal() +
-  scale_fill_manual(labels = c("WID-buccal-BC","WID-cervical-BC","WID-blood-BC"), values = c("WID_buccal_BC_adj" = colour.green, "WID_cervical_BC_adj" = colour.blue, "WID_blood_BC_adj" = colour.red)) +
-  theme(legend.position = "top", 
-        axis.text.x = element_text(hjust = 1)) +
-  scale_x_discrete(labels = c("Normal", "Normal\nadjacent", "Tumor")) +
-  facet_wrap(~index, labeller = labeller(index = c("WID_buccal_BC_adj" = "WID-buccal-BC", "WID_cervical_BC_adj" = "WID-cervical-BC", "WID_blood_BC_adj" = "WID-blood-BC")),
-             scales = 'free') +
+  
+  scale_fill_manual(values = rev(cols)[c(1, 3, 4)],
+                    aesthetics = c("colour", "fill"),
+                 labels = c("Normal", "Normal\nadjacent", "Tumor"),
+                 name = '') +
+  
+  theme(legend.position = "right", 
+        axis.text.x = element_blank()) +
+  
+  facet_wrap2(~index, labeller = labeller(index = c("WID_buccal_BC_adj" = "WID-buccal-BC",
+                                                    "WID_cervical_BC_adj" = "WID-cervical-BC",
+                                                    "WID_blood_BC_adj" = "WID-blood-BC")),
+             scales = 'free',
+             strip = strip) +
+  
   ggpubr::stat_compare_means(comparisons = list(
     c("normal", "tumor"),
     c("normal", "adj_norm"),
     c("adj_norm", "tumor")),
-                               label = 'p.format', step.increase = 0.13, vjust = 0,textsize=1, hide.ns = T) +
-  labs(fill = "Index")  +
+                               label = 'p.format',
+  step.increase = 0.13, vjust = 0,
+  size=3.2, hide.ns = T) +
   labs(y = '',
        title = 'GSE225845 (EPIC array)') +
    scale_y_continuous(expand = expansion(mult = c(0, 0.1)))
+  
+  
 
 print(e4)
 
@@ -1670,8 +1705,8 @@ coord_save_excel(f4, coordPath)
 
 ## Compile and save
 ```{r, message=FALSE, echo=FALSE}
-pdf_width <- 8.3  # Width in inches (a4: 8.3)
-pdf_height <- 11.7   # Height in inches (a4: 11.7)
+pdf_width <- 10  # Width in inches (a4: 8.3)
+pdf_height <- 9   # Height in inches (a4: 11.7)
 
 
 layout <- "
@@ -1682,21 +1717,179 @@ EEEEEEFF
 compiled <- a4 + b4 + c4 + d4 + e4 + f4
   
 compiled <-  compiled + plot_annotation(tag_levels = 'a') + 
-  plot_layout(design = layout)
+  plot_layout(design = layout) &
+    theme(plot.tag = element_text(face = 'bold'))
 
 ggsave(file.path(outPath,"F4.pdf"), width = pdf_width, height = pdf_height, compiled)
-ggsave(file.path(jpgPath,"F4.jpg"), width = pdf_width, height = pdf_height, compiled)
+# ggsave(file.path(jpgPath,"F4.jpg"), width = pdf_width, height = pdf_height, compiled)
 ```
 
 #=========SUPPLEMENTARY TABLES========
 
-# ST1: BRCA table
+# ST1: Epigenome-wide study buccal samples
+.csv file
 
 ```{r}
+library(IlluminaHumanMethylationEPICanno.ilm10b4.hg19)
 
+buccal <- readRDS(here("1-ewas", "1-buccal", "delta-beta.Rds")) |> 
+  as.data.frame() |> 
+  dplyr::mutate(padj = p.adjust(type, method = 'BH')) |> 
+  tibble::rownames_to_column('cg')
+
+# Get annotation
+man.epic <- as.data.frame(getAnnotation(IlluminaHumanMethylationEPICanno.ilm10b4.hg19))
+
+# Reformat the multiple names to first value
+man.epic$UCSC_RefGene_Name <- stringr::str_split(man.epic$UCSC_RefGene_Name, ";", simplify = T)[,1]
+
+# Find CpGs
+anno <- match(buccal$cg, man.epic$Name)
+
+# Extract info delta-beta
+tmp <- man.epic |>
+  select(Name, chr, pos, UCSC_RefGene_Name, UCSC_RefGene_Group, Relation_to_Island)
+
+# Subset the selected columns based on the 'anno' indices
+result <- cbind(buccal,tmp[anno, ])
+
+# rename column
+result$pvalue <- result$type
+
+# Select relevant columns for supplement
+result <- result |>
+  select(cg, chr, pos, dir_type, db_epithelial, db_immune, pvalue, padj, UCSC_RefGene_Name, UCSC_RefGene_Group, Relation_to_Island)
+
+# Save to .csv
+write.csv(result, file.path(supPath, "ST1.csv"), row.names=FALSE)
+
+# # Save a separate .csv file containing only those with padj<0.05
+# write.csv(result[result$padj<0.05,], file.path(supPath, "ST3_cropped.csv"), row.names=FALSE)
+
+
+```
+
+# ST2: Epigenome-wide study cervical samples
+
+.csv file
+
+```{r}
+cervical <- readRDS(here("1-ewas", "2-cervical", "delta-beta.Rds")) |> 
+  as.data.frame() |> 
+  dplyr::mutate(padj = p.adjust(type, method = 'BH')) |> 
+  tibble::rownames_to_column('cg')
+
+
+# Get annotation
+man.epic <- as.data.frame(getAnnotation(IlluminaHumanMethylationEPICanno.ilm10b4.hg19))
+
+# Reformat the multiple names to first value
+man.epic$UCSC_RefGene_Name <- stringr::str_split(man.epic$UCSC_RefGene_Name, ";", simplify = T)[,1]
+
+# Find CpGs
+anno <- match(cervical$cg, man.epic$Name)
+
+# Extract info delta-beta
+tmp <- man.epic |>
+  select(Name, chr, pos, UCSC_RefGene_Name, UCSC_RefGene_Group, Relation_to_Island)
+
+# Subset the selected columns based on the 'anno' indices
+result <- cbind(cervical,tmp[anno, ])
+
+# rename column
+result$pvalue <- result$type
+
+
+# Select relevant columns for supplement
+result <- result |>
+  select(cg, chr, pos, dir_type, db_epithelial, db_immune, pvalue, padj, UCSC_RefGene_Name, UCSC_RefGene_Group, Relation_to_Island)
+
+# Save to .csv
+write.csv(result, file.path(supPath, "ST2.csv"), row.names=FALSE)
+
+# Save a separate .csv file containing only those with padj<0.05
+# write.csv(result[result$padj<0.05,], file.path(supPath, "ST4_cropped.csv"), row.names=FALSE)
+```
+
+# ST3: Epigenome-wide study cervical samples
+.csv file
+
+```{r}
+blood <- readRDS(here("1-ewas", "3-blood", "delta-beta.Rds")) |> 
+  as.data.frame() |> 
+  dplyr::mutate(padj = p.adjust(type, method = 'BH')) |> 
+  tibble::rownames_to_column('cg')
+
+
+# Get annotation
+man.epic <- as.data.frame(getAnnotation(IlluminaHumanMethylationEPICanno.ilm10b4.hg19))
+
+# Reformat the multiple names to first value
+man.epic$UCSC_RefGene_Name <- stringr::str_split(man.epic$UCSC_RefGene_Name, ";", simplify = T)[,1]
+
+# Find CpGs
+anno <- match(blood$cg, man.epic$Name)
+
+# Extract info delta-beta
+tmp <- man.epic |>
+  select(Name, chr, pos, UCSC_RefGene_Name, UCSC_RefGene_Group, Relation_to_Island)
+
+# Subset the selected columns based on the 'anno' indices
+result <- cbind(blood,tmp[anno, ])
+
+# rename column
+result$pvalue <- result$type
+
+
+# Select relevant columns for supplement
+result <- result |>
+  select(cg, chr, pos, dir_type, db_epithelial, db_immune, pvalue, padj, UCSC_RefGene_Name, UCSC_RefGene_Group, Relation_to_Island)
+
+# Save to .csv
+write.csv(result, file.path(supPath, "ST3.csv"), row.names=FALSE)
+```
+
+# ST4: Overlapping genomic regions, buccal and cervical
+
+```{r}
+# Load data
+load(here("1-ewas", "1-buccal", "2-output", "ranges.Rdata")) 
+buccal <- ranges
+
+load(here("1-ewas", "2-cervical", "2-output", "ranges.Rdata")) 
+cervical <- ranges
+
+buccal <- sortSeqlevels(buccal)
+buccal <- sort(buccal)
+# buccal <- buccal[buccal$Stouffer<0.05,]
+
+cervical <- sortSeqlevels(cervical)
+cervical <- sort(cervical)
+# cervical <- cervical[cervical$Stouffer,]
+
+overlaps1 <- subsetByOverlaps(buccal, cervical)
+overlaps2 <- subsetByOverlaps(cervical, buccal)
+
+# Supplementary table for overlaps
+overlaps <- as.data.frame(overlaps1) |> 
+  dplyr::select(seqnames, start, end, width, strand, no.cpgs, overlapping.genes, meandiff) |> 
+  dplyr::rename(meandiff_buccal = meandiff)
+
+overlaps$meandiff_cervical <- overlaps2$meandiff
+
+# Overlaps object can be exported as supplementary table
+
+# Save to .csv
+write.csv(overlaps, file.path(supPath, "ST6.csv"), row.names=FALSE)
+```
+
+
+
+# ST5: BRCA table
+
+```{r}
 theme_gtsummary_journal(journal = "jama")
 theme_gtsummary_compact()
-
 
 
 tmp1 <- data |> 
@@ -1715,78 +1908,73 @@ tmp1 <- data |>
                                                      "Blood")))
 
 # Columns select
-tmp1 <- tmp1 %>% select(sampletype, age, type, BMI, smoking)
+tmp1 <- tmp1 |> select(sampletype, age, type, BMI, smoking)
 
 # Replace empty columns with NA
-tmp1 <- tmp1 %>% mutate_if(is.character, ~na_if(., ''))
+tmp1 <- tmp1 |> mutate_if(is.character, ~na_if(., ''))
 
 tmp1$smoking<- as.character(tmp1$smoking)
 
-tbl <- tmp1 %>%
+tbl <- tmp1 |>
   tbl_strata(strata = sampletype,
              .tbl_fun= 
-               ~ .x %>%
-               tbl_summary(by = type,
+               ~ .x |>
+               tbl_summary(by = 'type',
                            type = list(age ~ "continuous",BMI ~ "continuous"),
                            statistic = list(age ~ "{mean} ({sd})",BMI ~ "{mean} ({sd})"),
                            missing = "no",
-                           label = list(age ~ "Age at sample taken",
-                                        type ~ "Type",
-                                        BMI ~ "Body Mass Index",
-                                        smoking ~ "Current smoker"
-                                        )) %>%
-               bold_labels() %>%
+                           label = list(age = "Age at sample taken",
+                                        type = "Type",
+                                        BMI = "Body Mass Index",
+                                        smoking = "Current smoker"
+                                        )) |>
+               bold_labels() |>
                modify_header(update = all_stat_cols() ~"**{level}**<br>n = {n}")) 
 
 
-t1 <- tbl %>%
-  as_gt()  %>%
+t1 <- tbl |>
+  as_gt()  |>
   text_transform(locations = cells_body(),
                  fn = function(x){
                    paste0(ifelse(x == "0 (0)", "", ifelse(x == "NA (NA – NA)", "", x)))
                  }
-  ) %>%
+  ) |>
   text_transform(locations = cells_body(),
                  fn = function(x){
                    paste0(ifelse(x == "0.0000 (0.0000–0.0000)", "0 (0–0)", x))
                  }
-  ) %>%
+  ) |>
   text_transform(locations = cells_body(),
                  fn = function(x){
                    paste0(ifelse(x == "0 (NA)", "", x))
                  }
-  ) %>%
+  ) |>
   text_transform(locations = cells_body(),
                  fn = function(x){
                    paste0(ifelse(x == "NA (NA)", "", x))
                  }
-  ) %>%
-  text_transform(locations = cells_body(),
-                 fn = function(x){
-                   gsub("[.]", "·", x)
-                 }) %>%
+  ) |>
   tab_options(
-    table.width = px(550),
+    table.width = px(650),
     table.font.size = 12,
     table.font.names = "Arial",
   ) |> 
   opt_stylize(style = 4)
 
-t1 %>% gtsave(file.path(outPath,"ST1.html"))
+t1 |> gtsave(file.path(outPath,"ST1.html"))
 
 # to pdf
 pagedown::chrome_print(file.path(outPath,"ST1.html"), output = file.path(outPath,"ST1.pdf"))
 ```
-# ST2: Breast datasets
+
+# ST6: Breast datasets
 
 ```{r}
-
 theme_gtsummary_journal(journal = "jama")
 theme_gtsummary_compact()
 
-load(file.path(dataDir,"GSE225845","pheno_trimmed.Rdata")) # Load pheno file from additional breast dataset
-load(here("0-data","dataframes-plotting","tcga_validation.Rdata")) # load pheno file from TCGA
-
+load(here("0-data", "GSE22845","pheno_trimmed.Rdata"))# Load pheno file from additional breast dataset
+load(here("0-data", "dataframes-plotting","tcga_validation.Rdata")) # load pheno file from TCGA
 
 pheno_trimmed$set <- "validation_breast"
 pheno_trimmed$subset <- "GSE225845"
@@ -1822,7 +2010,7 @@ tmp1 <- data2 |>
                                    subset == "GSE225845" ~ "GSE225845<br>(EPIC array)"))
 
 # Stage T cleaning
-tmp1 <- tmp1 %>%
+tmp1 <- tmp1 |>
   mutate(stage_T = case_when(
     is.na(stage_T)~ NA,
     grepl("^T[0-9]$", stage_T) ~ stage_T,  # Entries already in T[number] format
@@ -1840,7 +2028,7 @@ tmp1 <- tmp1 %>%
   ))
 
 # Stage N cleaning
-tmp1 <- tmp1 %>%
+tmp1 <- tmp1 |>
   mutate(stage_N = case_when(stage_N == "N0 (i-)" ~ "N0",  
          stage_N == "N0 (i+)" ~ "N0",
          stage_N == "N0 (mol+)" ~ "N0",
@@ -1874,7 +2062,7 @@ tmp1$PR[is.na(tmp1$PR)  &tmp1$type=="Breast cancer tissue" & tmp1$subset!="Tissu
 #
 
 # Columns select
-tmp1 <- tmp1 %>% select(subset, age, type, stage_T, stage_N, grade, ER)
+tmp1 <- tmp1 |> select(subset, age, type, stage_T, stage_N, grade, ER)
 
 
 # Columns to convert to factors
@@ -1885,225 +2073,319 @@ tmp1[, columns_to_factor] <- lapply(tmp1[, columns_to_factor], factor)
 
 
 # Replace empty columns with NA
-tmp1 <- tmp1 %>% mutate_if(is.character, ~na_if(., ''))
+tmp1 <- tmp1 |> mutate_if(is.character, ~na_if(., ''))
 
 
-tbl <- tmp1 %>%
+tbl <- tmp1 |>
   tbl_strata(strata = subset,
              .tbl_fun= 
-               ~ .x %>%
-               tbl_summary(type = list(age ~ "continuous"),
-                           statistic = list(age ~ "{mean} ({sd})"),
+               ~ .x |>
+               tbl_summary(type = list("age" ~ "continuous"),
+                           statistic = list("age" ~ "{mean} ({sd})"),
                            missing = "no",
-                           label = list(age ~ "Age at sample taken",
-                                        type ~ "Type",
-                                        stage_T ~ "Stage (T)",
-                                        stage_N ~ "Stage (N)",
-                                        grade ~ "Grade")) %>%
-               bold_labels() %>%
-               modify_header(update = all_stat_cols() ~"**{level}**<br>n = {n}")) 
+                           label = list("age" = "Age at sample taken",
+                                        "type" = "Type",
+                                        "stage_T" = "Stage (T)",
+                                        "stage_N" = "Stage (N)",
+                                        "grade" = "Grade")) |>
+               bold_labels() |>
+               modify_header(all_stat_cols() ~"**{level}**<br>n = {n}")) 
 
 
-t1 <- tbl %>%
-  as_gt()  %>%
+t1 <- tbl |>
+  as_gt()  |>
   text_transform(locations = cells_body(),
                  fn = function(x){
                    paste0(ifelse(x == "0 (0)", "-", ifelse(x == "NA (NA – NA)", "-", x)))
                  }
-  ) %>%
+  ) |>
   text_transform(locations = cells_body(),
                  fn = function(x){
                    paste0(ifelse(x == "0.0000 (0.0000–0.0000)", "0 (0–0)", x))
                  }
-  ) %>%
+  ) |>
   text_transform(locations = cells_body(),
                  fn = function(x){
                    paste0(ifelse(x == "0 (NA)", "-", x))
                  }
-  ) %>%
+  ) |>
   text_transform(locations = cells_body(),
                  fn = function(x){
                    paste0(ifelse(x == "NA (NA)", "-", x))
                  }
-  ) %>%
-  text_transform(locations = cells_body(),
-                 fn = function(x){
-                   gsub("[.]", "·", x)
-                 }) %>%
+  ) |>
   tab_options(
-    table.width = px(550),
+    table.width = px(650),
     table.font.size = 12,
     table.font.names = "Arial",
   ) |> 
   opt_stylize(style = 4)
 
-t1 %>% gtsave(file.path(outPath,"ST2.html"))
+t1 |> gtsave(file.path(outPath,"ST2.html"))
 
 # to pdf
 pagedown::chrome_print(file.path(outPath,"ST2.html"), output = file.path(outPath,"ST2.pdf"))
 ```
 
-# ST3: Epigenome-wide study buccal samples
-.csv file
-
-```{r}
-
-library(IlluminaHumanMethylationEPICanno.ilm10b4.hg19)
-
-buccal <- readRDS(here("1-ewas", "1-buccal", "delta-beta.Rds")) |> 
-  as.data.frame() |> 
-  dplyr::mutate(padj = p.adjust(type, method = 'BH')) |> 
-  tibble::rownames_to_column('cg')
-
-
-# Get annotation
-man.epic <- as.data.frame(getAnnotation(IlluminaHumanMethylationEPICanno.ilm10b4.hg19))
-
-# Reformat the multiple names to first value
-man.epic$UCSC_RefGene_Name <- stringr::str_split(man.epic$UCSC_RefGene_Name, ";", simplify = T)[,1]
-
-# Find CpGs
-anno <- match(buccal$cg, man.epic$Name)
-
-# Extract info delta-beta
-tmp <- man.epic %>%
-  select(Name, chr, pos, UCSC_RefGene_Name, UCSC_RefGene_Group, Relation_to_Island)
-
-# Subset the selected columns based on the 'anno' indices
-result <- cbind(buccal,tmp[anno, ])
-
-# rename column
-result$pvalue <- result$type
-
-
-# Select relevant columns for supplement
-result <- result %>%
-  select(cg, chr, pos, dir_type, db_epithelial, db_immune, pvalue, padj, UCSC_RefGene_Name, UCSC_RefGene_Group, Relation_to_Island)
-
-# Save to .csv
-write.csv(result, file.path(supPath, "ST3.csv"), row.names=FALSE)
-
-# Save a separate .csv file containing only those with padj<0.05
-write.csv(result[result$padj<0.05,], file.path(supPath, "ST3_cropped.csv"), row.names=FALSE)
-
-
-```
-
-# ST4: Epigenome-wide study cervical samples
-.csv file
-
-```{r}
-cervical <- readRDS(here("1-ewas", "2-cervical", "delta-beta.Rds")) |> 
-  as.data.frame() |> 
-  dplyr::mutate(padj = p.adjust(type, method = 'BH')) |> 
-  tibble::rownames_to_column('cg')
-
-
-# Get annotation
-man.epic <- as.data.frame(getAnnotation(IlluminaHumanMethylationEPICanno.ilm10b4.hg19))
-
-# Reformat the multiple names to first value
-man.epic$UCSC_RefGene_Name <- stringr::str_split(man.epic$UCSC_RefGene_Name, ";", simplify = T)[,1]
-
-# Find CpGs
-anno <- match(cervical$cg, man.epic$Name)
-
-# Extract info delta-beta
-tmp <- man.epic %>%
-  select(Name, chr, pos, UCSC_RefGene_Name, UCSC_RefGene_Group, Relation_to_Island)
-
-# Subset the selected columns based on the 'anno' indices
-result <- cbind(cervical,tmp[anno, ])
-
-# rename column
-result$pvalue <- result$type
-
-
-# Select relevant columns for supplement
-result <- result %>%
-  select(cg, chr, pos, dir_type, db_epithelial, db_immune, pvalue, padj, UCSC_RefGene_Name, UCSC_RefGene_Group, Relation_to_Island)
-
-# Save to .csv
-write.csv(result, file.path(supPath, "ST4.csv"), row.names=FALSE)
-
-# Save a separate .csv file containing only those with padj<0.05
-write.csv(result[result$padj<0.05,], file.path(supPath, "ST4_cropped.csv"), row.names=FALSE)
-```
-
-# ST5: Epigenome-wide study cervical samples
-.csv file
-
-```{r}
-blood <- readRDS(here("1-ewas", "3-blood", "delta-beta.Rds")) |> 
-  as.data.frame() |> 
-  dplyr::mutate(padj = p.adjust(type, method = 'BH')) |> 
-  tibble::rownames_to_column('cg')
-
-
-# Get annotation
-man.epic <- as.data.frame(getAnnotation(IlluminaHumanMethylationEPICanno.ilm10b4.hg19))
-
-# Reformat the multiple names to first value
-man.epic$UCSC_RefGene_Name <- stringr::str_split(man.epic$UCSC_RefGene_Name, ";", simplify = T)[,1]
-
-# Find CpGs
-anno <- match(blood$cg, man.epic$Name)
-
-# Extract info delta-beta
-tmp <- man.epic %>%
-  select(Name, chr, pos, UCSC_RefGene_Name, UCSC_RefGene_Group, Relation_to_Island)
-
-# Subset the selected columns based on the 'anno' indices
-result <- cbind(blood,tmp[anno, ])
-
-# rename column
-result$pvalue <- result$type
-
-
-# Select relevant columns for supplement
-result <- result %>%
-  select(cg, chr, pos, dir_type, db_epithelial, db_immune, pvalue, padj, UCSC_RefGene_Name, UCSC_RefGene_Group, Relation_to_Island)
-
-# Save to .csv
-write.csv(result, file.path(supPath, "ST5.csv"), row.names=FALSE)
-```
-
-# ST6: Overlapping genomic regions, buccal and cervical
-
-```{r}
-# Load data
-load(here("1-ewas", "1-buccal", "2-output", "ranges.Rdata")) 
-buccal <- ranges
-
-load(here("1-ewas", "2-cervical", "2-output", "ranges.Rdata")) 
-cervical <- ranges
-
-buccal <- sortSeqlevels(buccal)
-buccal <- sort(buccal)
-# buccal <- buccal[buccal$Stouffer<0.05,]
-
-cervical <- sortSeqlevels(cervical)
-cervical <- sort(cervical)
-# cervical <- cervical[cervical$Stouffer,]
-
-overlaps1 <- subsetByOverlaps(buccal, cervical)
-overlaps2 <- subsetByOverlaps(cervical, buccal)
-
-# Supplementary table for overlaps
-overlaps <- as.data.frame(overlaps1) |> 
-  dplyr::select(seqnames, start, end, width, strand, no.cpgs, overlapping.genes, meandiff) |> 
-  dplyr::rename(meandiff_buccal = meandiff)
-
-overlaps$meandiff_cervical <- overlaps2$meandiff
-
-# Overlaps object can be exported as supplementary table
-
-# Save to .csv
-write.csv(overlaps, file.path(supPath, "ST6.csv"), row.names=FALSE)
-```
-
 #=========EXTENDED DATA FIGURES ========
-# Extended Data 1: PCA plot of all data
+
+# Extended Data 1: IC and cell types in the discovery and external validation sets
+
+
+
+## a) Buccal: differences in IC
+
+```{r}
+
+subset_data <- subset(data, set %in% c("discovery_buccal", "validation_buccal"))
+subset_data$type <- factor(subset_data$type, levels=c("Control","BC case"))
+
+ED1a <- ggplot(data=subset_data, aes(x = type,
+             y = ic,
+            fill = type)) +
+  geom_boxplot(aes(fill = type),
+               alpha = 0.2,outlier.shape = NA) +
+  ggbeeswarm::geom_quasirandom(aes(colour = type),
+                               alpha = 0.5, size=0.5) +
+  scale_color_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control)) +
+  theme_minimal() +
+  theme(legend.title = element_blank(),
+        legend.position = '',
+        axis.text.x = element_blank(),
+        axis.title.y = element_markdown()) +
+  scale_fill_manual(values = c(colour.Control, colour.Breast)) +
+  labs(x = "", y = "Immune Cell Fraction", title= "Buccal") + 
+  ggpubr::stat_compare_means(comparisons = list(c("BC case","Control")),
+                             label = 'p.signif', label.y = c(0.75), vjust = +0.1,size = 3.2) +
+  facet_wrap(~set,labeller = as_labeller(c(`discovery_buccal` = "Discovery\nSet", `validation_buccal` = "External\nValidation Set"))) + 
+       theme(strip.text.x = element_text(size = 8))
+
+ED1a
+
+```
+
+## b) Cervical: differences in IC
+
+
+```{r}
+
+subset_data <- subset(data, set %in% c("discovery_cervical", "validation_cervical"))
+subset_data$type <- factor(subset_data$type, levels=c("Control","BC case"))
+
+ED1b <- ggplot(data=subset_data, aes(x = type,
+             y = ic,
+            fill = type)) +
+  geom_boxplot(aes(fill = type),
+               alpha = 0.2, outlier.shape = NA) +
+  ggbeeswarm::geom_quasirandom(aes(colour = type),
+                               alpha = 0.5, size=0.5) +
+  scale_color_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control)) +
+  theme_minimal() +
+  theme(legend.title = element_blank(),
+        legend.position = 'top',
+        legend.direction = "vertical",
+        axis.text.x = element_blank(),
+        axis.title.y = element_markdown()) +
+  scale_fill_manual(values = c(colour.Control, colour.Breast)) +
+  labs(x = "", y = "Immune Cell Fraction", title= "Cervical") + 
+  ggpubr::stat_compare_means(comparisons = list(c("BC case","Control")),
+                             label = 'p.signif', label.y = c(0.9), vjust = +0.1,size = 3.2) +
+  facet_wrap(~set,labeller = as_labeller(c(`discovery_cervical` = "Discovery\nSet", `validation_cervical` = "External\nValidation Set"))) + 
+       theme(strip.text.x = element_text(size = 8))
+
+ED1b
+
+
+```
+
+## c) Blood: differences in Neutro
+
+```{r}
+
+subset_data <- subset(data, set %in% c("discovery_blood") | subset %in% c("GSE237036"))
+subset_data$type <- factor(subset_data$type, levels=c("Control","BC case"))
+
+ED1c <- ggplot(data=subset_data, aes(x = type,
+             y = hepidish_Neutro,
+            fill = type)) +
+  geom_boxplot(aes(fill = type),
+               alpha = 0.2, outlier.shape = NA) +
+  ggbeeswarm::geom_quasirandom(aes(colour = type),
+                               alpha = 0.5, size=0.5) +
+  scale_color_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control)) +
+  theme_minimal() +
+  theme(legend.title = element_blank(),
+        legend.position = '',
+        axis.text.x = element_blank(),
+        axis.title.y = element_markdown()) +
+  scale_fill_manual(values = c(colour.Control, colour.Breast)) +
+  labs(x = "", y = "Neutrophil Fraction", title= "Blood")  + 
+  ggpubr::stat_compare_means(comparisons = list(c("BC case","Control")),
+                             label = 'p.signif', label.y = c(0.85), vjust = +0.1,size = 3.2) +
+  facet_wrap(~set,labeller = as_labeller(c(`discovery_blood` = "Discovery\nSet", `validation_blood` = "GSE237036"))) + 
+       theme(strip.text.x = element_text(size = 8))
+
+ED1c
+
+
+```
+
+## d) Buccal: Cell type boxplot BC / control.
+
+```{r}
+
+subset_data <- subset(data, set %in% c("discovery_buccal", "validation_buccal"))
+subset_data$type <- factor(subset_data$type, levels=c("Control","BC case"))
+
+# Define the new facet labels
+labs <- c("Basophils", "CD4T", "CD8T", "Eosinophils", "Epithelial", "Fibroblasts", "Monocytes", "Neutrophils", "NK cells")
+names(labs) <- c("hepidish_B", "hepidish_CD4T", "hepidish_CD8T", "hepidish_Eosino", "hepidish_Epi", "hepidish_Fib", "hepidish_Mono", "hepidish_Neutro", "hepidish_NK")
+
+labs_names <- c("Discovery Set", "External Validation Set")
+names(labs_names) <- c("discovery_buccal", "validation_buccal")
+
+# Define the columns you want to gather
+celltypes <- c("hepidish_B", "hepidish_CD4T", "hepidish_CD8T", "hepidish_Eosino", "hepidish_Epi", "hepidish_Fib", "hepidish_Mono", "hepidish_Neutro", "hepidish_NK")
+
+# Reshape the dataframe to long format
+subset_data_long <- subset_data |>
+  gather(key = "cell_type", value = "Fraction", celltypes)
+
+
+ED1d <- ggplot(subset_data_long, aes(x = type, y = Fraction, fill = type)) +
+  geom_boxplot(outlier.shape = NA) +
+  coord_flip() +
+  facet_grid(cell_type~set, labeller = labeller(cell_type= labs, set=labs_names))  +
+  labs(y = "Proportion", x = "Cell type", fill = "", title= "Buccal") + 
+  ggpubr::stat_compare_means(ref.group = 'Control',
+                             label = 'p.signif',
+                             hide.ns = T, label.y = c(0.9), vjust = +0.7) +
+  theme_minimal() +
+  theme(legend.position = "",  # Move the legend to the bottom
+        legend.direction = "horizontal",
+        panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    axis.text.y = element_blank(),
+    axis.ticks.y = element_blank(),
+    axis.title.y = element_blank(),
+    strip.text.y = element_text(angle=0)) + scale_fill_manual(values = c(colour.Control, colour.Breast))
+
+ED1d 
+
+```
+
+##  e) Cervical: Cell type boxplot BC / control.
+
+```{r}
+
+subset_data <- subset(data, set %in% c("discovery_cervical", "validation_cervical"))
+subset_data$type <- factor(subset_data$type, levels=c("Control","BC case"))
+
+# Define the new facet labels
+labs <- c("Basophils", "CD4T", "CD8T", "Eosinophils", "Epithelial", "Fibroblasts", "Monocytes", "Neutrophils", "NK cells")
+names(labs) <- c("hepidish_B", "hepidish_CD4T", "hepidish_CD8T", "hepidish_Eosino", "hepidish_Epi", "hepidish_Fib", "hepidish_Mono", "hepidish_Neutro", "hepidish_NK")
+
+labs_names <- c("Discovery Set", "External Validation Set")
+names(labs_names) <- c("discovery_cervical", "validation_cervical")
+
+# Define the columns you want to gather
+celltypes <- c("hepidish_B", "hepidish_CD4T", "hepidish_CD8T", "hepidish_Eosino", "hepidish_Epi", "hepidish_Fib", "hepidish_Mono", "hepidish_Neutro", "hepidish_NK")
+
+# Reshape the dataframe to long format
+subset_data_long <- subset_data |>
+  gather(key = "cell_type", value = "Fraction", celltypes)
+
+
+ED1e <- ggplot(subset_data_long, aes(x = type, y = Fraction, fill = type)) +
+  geom_boxplot(outlier.shape = NA) +
+  coord_flip() +
+  facet_grid(cell_type~set, labeller = labeller(cell_type= labs, set=labs_names))  +
+  labs(y = "Proportion", x = "Cell type", fill = "", title= "Cervical") + 
+  ggpubr::stat_compare_means(ref.group = 'Control',
+                             label = 'p.signif',
+                             hide.ns = T, label.y = c(0.9), vjust = +0.7) +
+  theme_minimal() +
+  theme(legend.position = "",  # Move the legend to the bottom
+        legend.direction = "horizontal",
+        panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    axis.text.y = element_blank(),
+    axis.ticks.y = element_blank(),
+    axis.title.y = element_blank(),
+    strip.text.y = element_text(angle=0)) + scale_fill_manual(values = c(colour.Control, colour.Breast))
+ED1e
+```
+
+##  f) Blood: Cell type boxplot BC / control.
+
+```{r}
+subset_data <- subset(data, set %in% c("discovery_blood") | subset %in% c("GSE237036"))
+subset_data$type <- factor(subset_data$type, levels=c("Control","BC case"))
+
+# Define the new facet labels
+labs <- c("Basophils", "CD4T", "CD8T", "Eosinophils", "Epithelial", "Fibroblasts", "Monocytes", "Neutrophils", "NK cells")
+names(labs) <- c("hepidish_B", "hepidish_CD4T", "hepidish_CD8T", "hepidish_Eosino", "hepidish_Epi", "hepidish_Fib", "hepidish_Mono", "hepidish_Neutro", "hepidish_NK")
+
+labs_names <- c("Discovery Set", "GSE237036")
+names(labs_names) <- c("discovery_blood", "validation_blood")
+
+# Define the columns you want to gather
+celltypes <- c("hepidish_B", "hepidish_CD4T", "hepidish_CD8T", "hepidish_Eosino", "hepidish_Epi", "hepidish_Fib", "hepidish_Mono", "hepidish_Neutro", "hepidish_NK")
+
+# Reshape the dataframe to long format
+subset_data_long <- subset_data |>
+  gather(key = "cell_type", value = "Fraction", celltypes)
+
+
+ED1f <- ggplot(subset_data_long, aes(x = type, y = Fraction, fill = type)) +
+  geom_boxplot(outlier.shape = NA) +
+  coord_flip() +
+  facet_grid(cell_type~set, labeller = labeller(cell_type= labs, set=labs_names))  +
+  labs(y = "Proportion", x = "Cell type", fill = "", title= "Blood") + 
+  ggpubr::stat_compare_means(ref.group = 'Control',
+                             label = 'p.signif',
+                             hide.ns = T, label.y = c(0.9), vjust = +0.7) +
+  theme_minimal() +
+  theme(legend.position = "bottom",  # Move the legend to the bottom
+        legend.direction = "vertical",
+        panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    axis.text.y = element_blank(),
+    axis.ticks.y = element_blank(),
+    axis.title.y = element_blank(),
+    strip.text.y = element_text(angle=0)) + scale_fill_manual(values = c(colour.Control, colour.Breast))
+ED1f
+```
+
+## Compile and save
+
+```{r, message=FALSE, echo=FALSE}
+layout <- "
+AABBCCD
+EEEEEEE
+FFFFFFF
+GGGGGGG
+"
+
+
+pdf_width <- 8.3  # Width in inches (a4)
+pdf_height <- 11.7   # Height in inches (a4: 11.7)
+
+
+compiled <- ED1a + ED1b+ ED1c + guide_area() + ED1d+ ED1e+ ED1f
+  
+compiled <-  compiled + plot_annotation(tag_levels = 'a') + 
+  plot_layout(design = layout, guides = 'collect') &
+    theme(plot.tag = element_text(face = 'bold'))
+
+ggsave(file.path(outPath,"ED3.pdf"), width = pdf_width, height = pdf_height, compiled)
+# ggsave(file.path(jpgPath,"ED3.jpg"), width = pdf_width, height = pdf_height, compiled)
+```
+
+
+
+
+# Extended Data 2: PCA plot of all data
 
 ## a-c) PCA of all data
 
@@ -2122,7 +2404,7 @@ indices <- which(pcs$subset == "GSE237036")
 pcs$ic[indices] <- 1 - (pcs$epi[indices] + pcs$fib[indices])
 
 # Recode some columns for plotting and consistency
-pcs <- pcs %>%
+pcs <- pcs |>
   mutate(subset = case_when(
     sampletype == 'buccal' ~ recode(subset,
                                      'external_validation' = 'Buccal validation set (EPIC)', 
@@ -2144,7 +2426,7 @@ pcs <- pcs %>%
                                      'TCGA' = 'TCGA Set (450K)',
                                      'GSE225845' = 'GSE225845 (EPIC)'),
     TRUE ~ subset  # For all other cases, keep subset unchanged
-  )) %>% 
+  )) |> 
   mutate(type = case_when(
     sampletype == 'breast'~ recode(type, 'adj_norm'='Normal adjacent tissue',
                                  'Cancer'='Breast cancer tissue*',
@@ -2262,7 +2544,7 @@ load(here("0-data","dataframes-plotting","pca_all_buccal.Rdata"))
 
 
 # Recode some columns for plotting and consistency
-pcs <- pcs %>% mutate(subset=recode(subset, 'external_validation'='Buccal validation set (EPIC)', 
+pcs <- pcs |> mutate(subset=recode(subset, 'external_validation'='Buccal validation set (EPIC)', 
                              'brca'='BRCA1/2 mutation carrier set (EPIC)',
                              'internal_validation'='Buccal Discovery Set (EPIC)',
                              'training'='Buccal Discovery Set (EPIC)'), 
@@ -2345,7 +2627,7 @@ pca_buccal.sample <- ggplot(data = pcs, aes(x = PC1, y = PC2, color = type)) +
 load(here("0-data","dataframes-plotting","pca_all_cervical.Rdata"))
 
 # Recode some columns for plotting and consistency
-pcs <- pcs %>% mutate(subset=recode(subset, 'external_validation'='Cervical validation set (EPIC)', 
+pcs <- pcs |> mutate(subset=recode(subset, 'external_validation'='Cervical validation set (EPIC)', 
                              'brca'='BRCA1/2 mutation carrier set (EPIC)',
                              'internal_validation'='Cervical Discovery Set (EPIC)',
                              'training'='Cervical Discovery Set (EPIC)'), 
@@ -2435,7 +2717,7 @@ indices <- which(pcs$subset == "GSE237036")
 pcs$ic[indices] <- 1 - (pcs$epi[indices] + pcs$fib[indices])
 
 # Recode some columns for plotting and consistency
-pcs <- pcs %>% mutate(subset=recode(subset, 'GSE237036'='Blood validation set (GSE237036 - EPIC)', 
+pcs <- pcs |> mutate(subset=recode(subset, 'GSE237036'='Blood validation set (GSE237036 - EPIC)', 
                              'brca'='BRCA1/2 mutation carrier set (EPIC)',
                              'internal_validation'='Blood Discovery Set (EPIC)',
                              'training'='Blood Discovery Set (EPIC)'), 
@@ -2520,7 +2802,7 @@ pca_blood.sample <- ggplot(data = pcs, aes(x = PC1, y = PC2, color = type)) +
 load(here("0-data","dataframes-plotting","pca_all_breast.Rdata"))
 
 # Recode some columns for plotting and consistency
-pcs <- pcs %>% mutate(type=recode(type, 'adj_norm'='Normal adjacent tissue',
+pcs <- pcs |> mutate(type=recode(type, 'adj_norm'='Normal adjacent tissue',
                                  'Cancer'='Breast cancer tissue*',
                                  'Control'='Matched normal tissue*',
                                  'Normal'='Normal tissue',
@@ -2645,347 +2927,12 @@ ggsave(file.path(outPath,"EDx.pdf"), width = pdf_width, height = pdf_height, com
 
 
 
-# Extended Data 2: Index training and evaluation 
-
-## a) Buccal: Internal validation AUC 
-
-```{r Internal Validation AUC plot1, echo=FALSE, message=FALSE}
- 
-ED1a <- plot_performance_compare(training_buccal, training_buccal$AUC_val, sets = 12) + labs(title = 'WID-buccal') + annotate("segment", x = 25000, xend = 30000, y = 1, yend = 0.93, colour = colour.green, size=1, alpha=0.6, arrow=arrow())
-ED1a
-```
-
-## b) Buccal: OOB 
-
-```{r}
-ED1b <-plot_performance_compare(training_buccal, training_buccal$AUC_oob, sets = 12, legendPos="")+ annotate("segment", x = 25000, xend = 30000, y = 1, yend = 0.89, colour = colour.green, size=1, alpha=0.6, arrow=arrow())
-
-ED1b 
-```
-
-
-## c) Cervical: Internal validation AUC 
-
-```{r Internal Validation AUC plot2, echo=FALSE, message=FALSE}
- 
-ED1c <- plot_performance_compare(training_cervical, training_cervical$AUC_val, sets = 12,legendPos="") + labs(title = 'WID-cervical') + annotate("segment", x = 25000, xend = 30000, y = 1, yend = 0.93, colour = colour.blue, size=1, alpha=0.6, arrow=arrow())
-ED1c
-```
-
-## d) Cervical: OOB 
-
-```{r}
-ED1d <-plot_performance_compare(training_cervical, training_cervical$AUC_oob, sets = 12,legendPos="")  + annotate("segment", x = 25000, xend = 30000, y = 0.93, yend = 0.82, colour = colour.blue, size=1, alpha=0.6, arrow=arrow())
-
-ED1d 
-```
-## e) Blood: Internal validation AUC 
-
-```{r Internal Validation AUC plot3, echo=FALSE, message=FALSE}
- 
-ED1e <- plot_performance_compare(training_blood, training_blood$AUC_val, sets = 12) + labs(title = 'WID-blood') + annotate("segment", x = 25000, xend = 30000, y = 0.9, yend = 0.98, colour = colour.red, size=1, alpha=0.6, arrow=arrow())
-ED1e
-```
-
-## f) Blood: OOB 
-
-```{r}
-ED1f <-plot_performance_compare(training_blood, training_blood$AUC_oob, sets = 12,legendPos="")  + annotate("segment", x = 25000, xend = 30000, y = 1, yend = 0.91, colour = colour.red, size=1, alpha=0.6, arrow=arrow())
-
-ED1f
-```
-
-
-
-
-## Compile and save
-
-```{r, message=FALSE, echo=FALSE}
-
-layout <- "
-AA
-BC
-BC
-DE
-DE
-FG
-FG
-"
-
-
-pdf_width <- 8.3  # Width in inches (a4)
-pdf_height <- 11.7   # Height in inches (a4: 11.7)
-
-
-compiled <- guide_area() + ED1a + ED1b + ED1c + ED1d + ED1e + ED1f
-  
-compiled <-  compiled + plot_annotation(tag_levels = 'a') + 
-  plot_layout(design = layout, guides='collect',axes = "collect")
-
-ggsave(file.path(outPath,"ED2.pdf"), width = pdf_width, height = pdf_height, compiled)
-ggsave(file.path(jpgPath,"ED2.jpg"), width = pdf_width, height = pdf_height, compiled)
-```
-
-
-# Extended Data 3: IC and cell types in the discovery and external validation sets
-
-
-
-## a) Buccal: differences in IC
-
-```{r}
-
-subset_data <- subset(data, set %in% c("discovery_buccal", "validation_buccal"))
-subset_data$type <- factor(subset_data$type, levels=c("Control","BC case"))
-
-ED1a <- ggplot(data=subset_data, aes(x = type,
-             y = ic,
-            fill = type)) +
-  geom_boxplot(aes(fill = type),
-               alpha = 0.2) +
-  ggbeeswarm::geom_quasirandom(aes(colour = type),
-                               alpha = 0.5, size=0.5) +
-  scale_color_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control)) +
-  theme_minimal() +
-  theme(legend.title = element_blank(),
-        legend.position = '',
-        axis.text.x = element_blank(),
-        axis.title.y = element_markdown()) +
-  scale_fill_manual(values = c(colour.Control, colour.Breast)) +
-  labs(x = "", y = "Immune Cell Fraction", title= "Buccal") + 
-  ggpubr::stat_compare_means(comparisons = list(c("BC case","Control")),
-                             label = 'p.signif', label.y = c(0.75), vjust = +0.1,textsize=2) +
-  facet_wrap(~set,labeller = as_labeller(c(`discovery_buccal` = "Discovery\nSet", `validation_buccal` = "External\nValidation Set"))) + 
-       theme(strip.text.x = element_text(size = 8))
-
-ED1a
-
-
-```
-## b) Cervical: differences in IC
-
-
-```{r}
-
-subset_data <- subset(data, set %in% c("discovery_cervical", "validation_cervical"))
-subset_data$type <- factor(subset_data$type, levels=c("Control","BC case"))
-
-ED1b <- ggplot(data=subset_data, aes(x = type,
-             y = ic,
-            fill = type)) +
-  geom_boxplot(aes(fill = type),
-               alpha = 0.2) +
-  ggbeeswarm::geom_quasirandom(aes(colour = type),
-                               alpha = 0.5, size=0.5) +
-  scale_color_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control)) +
-  theme_minimal() +
-  theme(legend.title = element_blank(),
-        legend.position = 'top',
-        legend.direction = "vertical",
-        axis.text.x = element_blank(),
-        axis.title.y = element_markdown()) +
-  scale_fill_manual(values = c(colour.Control, colour.Breast)) +
-  labs(x = "", y = "Immune Cell Fraction", title= "Cervical") + 
-  ggpubr::stat_compare_means(comparisons = list(c("BC case","Control")),
-                             label = 'p.signif', label.y = c(0.9), vjust = +0.1,textsize=2) +
-  facet_wrap(~set,labeller = as_labeller(c(`discovery_cervical` = "Discovery\nSet", `validation_cervical` = "External\nValidation Set"))) + 
-       theme(strip.text.x = element_text(size = 8))
-
-ED1b
-
-
-```
-
-## c) Blood: differences in Neutro
-
-```{r}
-
-subset_data <- subset(data, set %in% c("discovery_blood") | subset %in% c("GSE237036"))
-subset_data$type <- factor(subset_data$type, levels=c("Control","BC case"))
-
-ED1c <- ggplot(data=subset_data, aes(x = type,
-             y = hepidish_Neutro,
-            fill = type)) +
-  geom_boxplot(aes(fill = type),
-               alpha = 0.2) +
-  ggbeeswarm::geom_quasirandom(aes(colour = type),
-                               alpha = 0.5, size=0.5) +
-  scale_color_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control)) +
-  theme_minimal() +
-  theme(legend.title = element_blank(),
-        legend.position = '',
-        axis.text.x = element_blank(),
-        axis.title.y = element_markdown()) +
-  scale_fill_manual(values = c(colour.Control, colour.Breast)) +
-  labs(x = "", y = "Neutrophil Fraction", title= "Blood")  + 
-  ggpubr::stat_compare_means(comparisons = list(c("BC case","Control")),
-                             label = 'p.signif', label.y = c(0.85), vjust = +0.1,textsize=2) +
-  facet_wrap(~set,labeller = as_labeller(c(`discovery_blood` = "Discovery\nSet", `validation_blood` = "GSE237036"))) + 
-       theme(strip.text.x = element_text(size = 8))
-
-ED1c
-
-
-```
-
-## d) Buccal: Cell type boxplot BC / control.
-
-```{r}
-
-subset_data <- subset(data, set %in% c("discovery_buccal", "validation_buccal"))
-subset_data$type <- factor(subset_data$type, levels=c("Control","BC case"))
-
-# Define the new facet labels
-labs <- c("Basophils", "CD4T", "CD8T", "Eosinophils", "Epithelial", "Fibroblasts", "Monocytes", "Neutrophils", "NK cells")
-names(labs) <- c("hepidish_B", "hepidish_CD4T", "hepidish_CD8T", "hepidish_Eosino", "hepidish_Epi", "hepidish_Fib", "hepidish_Mono", "hepidish_Neutro", "hepidish_NK")
-
-labs_names <- c("Discovery Set", "External Validation Set")
-names(labs_names) <- c("discovery_buccal", "validation_buccal")
-
-# Define the columns you want to gather
-celltypes <- c("hepidish_B", "hepidish_CD4T", "hepidish_CD8T", "hepidish_Eosino", "hepidish_Epi", "hepidish_Fib", "hepidish_Mono", "hepidish_Neutro", "hepidish_NK")
-
-# Reshape the dataframe to long format
-subset_data_long <- subset_data %>%
-  gather(key = "cell_type", value = "Fraction", celltypes)
-
-
-ED1d <- ggplot(subset_data_long, aes(x = type, y = Fraction, fill = type)) +
-  geom_boxplot() +
-  coord_flip() +
-  facet_grid(cell_type~set, labeller = labeller(cell_type= labs, set=labs_names))  +
-  labs(y = "Proportion", x = "Cell type", fill = "", title= "Buccal") + 
-  ggpubr::stat_compare_means(ref.group = 'Control',
-                             label = 'p.signif',
-                             hide.ns = T, label.y = c(0.9), vjust = +0.7) +
-  theme_minimal() +
-  theme(legend.position = "",  # Move the legend to the bottom
-        legend.direction = "horizontal",
-        panel.grid.major = element_blank(),
-    panel.grid.minor = element_blank(),
-    axis.text.y = element_blank(),
-    axis.ticks.y = element_blank(),
-    axis.title.y = element_blank(),
-    strip.text.y = element_text(angle=0)) + scale_fill_manual(values = c(colour.Control, colour.Breast))
-ED1d 
-
-```
-
-##  e) Cervical: Cell type boxplot BC / control.
-
-```{r}
-
-subset_data <- subset(data, set %in% c("discovery_cervical", "validation_cervical"))
-subset_data$type <- factor(subset_data$type, levels=c("Control","BC case"))
-
-# Define the new facet labels
-labs <- c("Basophils", "CD4T", "CD8T", "Eosinophils", "Epithelial", "Fibroblasts", "Monocytes", "Neutrophils", "NK cells")
-names(labs) <- c("hepidish_B", "hepidish_CD4T", "hepidish_CD8T", "hepidish_Eosino", "hepidish_Epi", "hepidish_Fib", "hepidish_Mono", "hepidish_Neutro", "hepidish_NK")
-
-labs_names <- c("Discovery Set", "External Validation Set")
-names(labs_names) <- c("discovery_cervical", "validation_cervical")
-
-# Define the columns you want to gather
-celltypes <- c("hepidish_B", "hepidish_CD4T", "hepidish_CD8T", "hepidish_Eosino", "hepidish_Epi", "hepidish_Fib", "hepidish_Mono", "hepidish_Neutro", "hepidish_NK")
-
-# Reshape the dataframe to long format
-subset_data_long <- subset_data %>%
-  gather(key = "cell_type", value = "Fraction", celltypes)
-
-
-ED1e <- ggplot(subset_data_long, aes(x = type, y = Fraction, fill = type)) +
-  geom_boxplot() +
-  coord_flip() +
-  facet_grid(cell_type~set, labeller = labeller(cell_type= labs, set=labs_names))  +
-  labs(y = "Proportion", x = "Cell type", fill = "", title= "Cervical") + 
-  ggpubr::stat_compare_means(ref.group = 'Control',
-                             label = 'p.signif',
-                             hide.ns = T, label.y = c(0.9), vjust = +0.7) +
-  theme_minimal() +
-  theme(legend.position = "",  # Move the legend to the bottom
-        legend.direction = "horizontal",
-        panel.grid.major = element_blank(),
-    panel.grid.minor = element_blank(),
-    axis.text.y = element_blank(),
-    axis.ticks.y = element_blank(),
-    axis.title.y = element_blank(),
-    strip.text.y = element_text(angle=0)) + scale_fill_manual(values = c(colour.Control, colour.Breast))
-ED1e
-```
-##  f) Blood: Cell type boxplot BC / control.
-
-```{r}
-
-subset_data <- subset(data, set %in% c("discovery_blood") | subset %in% c("GSE237036"))
-subset_data$type <- factor(subset_data$type, levels=c("Control","BC case"))
-
-# Define the new facet labels
-labs <- c("Basophils", "CD4T", "CD8T", "Eosinophils", "Epithelial", "Fibroblasts", "Monocytes", "Neutrophils", "NK cells")
-names(labs) <- c("hepidish_B", "hepidish_CD4T", "hepidish_CD8T", "hepidish_Eosino", "hepidish_Epi", "hepidish_Fib", "hepidish_Mono", "hepidish_Neutro", "hepidish_NK")
-
-labs_names <- c("Discovery Set", "GSE237036")
-names(labs_names) <- c("discovery_blood", "validation_blood")
-
-# Define the columns you want to gather
-celltypes <- c("hepidish_B", "hepidish_CD4T", "hepidish_CD8T", "hepidish_Eosino", "hepidish_Epi", "hepidish_Fib", "hepidish_Mono", "hepidish_Neutro", "hepidish_NK")
-
-# Reshape the dataframe to long format
-subset_data_long <- subset_data %>%
-  gather(key = "cell_type", value = "Fraction", celltypes)
-
-
-ED1f <- ggplot(subset_data_long, aes(x = type, y = Fraction, fill = type)) +
-  geom_boxplot() +
-  coord_flip() +
-  facet_grid(cell_type~set, labeller = labeller(cell_type= labs, set=labs_names))  +
-  labs(y = "Proportion", x = "Cell type", fill = "", title= "Blood") + 
-  ggpubr::stat_compare_means(ref.group = 'Control',
-                             label = 'p.signif',
-                             hide.ns = T, label.y = c(0.9), vjust = +0.7) +
-  theme_minimal() +
-  theme(legend.position = "bottom",  # Move the legend to the bottom
-        legend.direction = "vertical",
-        panel.grid.major = element_blank(),
-    panel.grid.minor = element_blank(),
-    axis.text.y = element_blank(),
-    axis.ticks.y = element_blank(),
-    axis.title.y = element_blank(),
-    strip.text.y = element_text(angle=0)) + scale_fill_manual(values = c(colour.Control, colour.Breast))
-ED1f
-```
-
-## Compile and save
-
-```{r, message=FALSE, echo=FALSE}
-
-layout <- "
-AABBCCD
-EEEEEEE
-FFFFFFF
-GGGGGGG
-"
-
-
-pdf_width <- 8.3  # Width in inches (a4)
-pdf_height <- 11.7   # Height in inches (a4: 11.7)
-
-
-compiled <- ED1a + ED1b+ ED1c + guide_area() + ED1d+ ED1e+ ED1f
-  
-compiled <-  compiled + plot_annotation(tag_levels = 'a') + 
-  plot_layout(design = layout, guides = 'collect')
-
-ggsave(file.path(outPath,"ED3.pdf"), width = pdf_width, height = pdf_height, compiled)
-ggsave(file.path(jpgPath,"ED3.jpg"), width = pdf_width, height = pdf_height, compiled)
-```
-
-
-
-# Extended Data 4: P value and manhattan plots
+# Extended Data 3: P value and manhattan plots
 
 Manhattan plots take a long time to generate, hence they've been generated already and saved as .jpgs. These can be used if the figure needs to be re-arranged. They are called from the 'compile' section below.
 
 ## a) Buccal: P value histogram 
+
 ```{r}
 buccal <- readRDS(here("1-ewas", "1-buccal", "delta-beta.Rds")) |> 
   as.data.frame() |> 
@@ -3128,7 +3075,10 @@ ggsave(file.path(outPath,"ED4.pdf"), width = pdf_width, height = pdf_height, com
 ggsave(file.path(jpgPath,"ED4.jpg"), width = pdf_width, height = pdf_height, compiled)
 ```
 
-# Extended Data 5: Relation to Island
+
+
+
+# Extended Data 4: Relation to Island
 
 ## a) Buccal
 
@@ -3211,10 +3161,6 @@ EDxd <- ggplot(selected_entries, aes(x = "", fill = UCSC_RefGene_Group)) +
 
 
 
-
-
-
-
 ## Compile and save
 
 ```{r, message=FALSE, echo=FALSE}
@@ -3234,13 +3180,16 @@ compiled <- (EDxa + theme(legend.position = "none") + labs(title="Buccal samples
   
   
 compiled <-  compiled + plot_annotation(tag_levels = 'a') + 
-  plot_layout(design = layout)
+  plot_layout(design = layout) &
+    theme(plot.tag = element_text(face = 'bold'))
 
 ggsave(file.path(outPath,"ED5.pdf"), width = pdf_width, height = pdf_height, compiled)
-ggsave(file.path(jpgPath,"ED5.jpg"), width = pdf_width, height = pdf_height, compiled)
+# ggsave(file.path(jpgPath,"ED5.jpg"), width = pdf_width, height = pdf_height, compiled)
 ```
 
-# Extended Data 6 
+
+
+# Extended Data 5 
 
 Final file has been compiled in Adobe Illustrator, hence do not regenerate unless data changes. Edit ED6.ai or ED6.pdf in illustrator directly.
 
@@ -3629,7 +3578,8 @@ ggsave(file.path(jpgPath,"F1.jpg"), width = pdf_width, height = pdf_height, comp
 ```
 
 
-# Extended Data 7: Buccal: GO analysis of DMPs
+
+# Extended Data 6: Buccal: GO analysis of DMPs
 
 ```{r}
 load(here("1-ewas","1-buccal","2-output","gsea-clusterProfiler.Rdata"))
@@ -3651,14 +3601,15 @@ pdf_height <- 5   # Height in inches (a4: 11.7)
 compiled <- bp_dot 
   
 compiled <-  compiled  + 
-  plot_layout(design = layout)
+  plot_layout(design = layout)&
+    theme(plot.tag = element_text(face = 'bold'))
 
 ggsave(file.path(outPath,"ED7.pdf"), width = pdf_width, height = pdf_height, compiled)
-ggsave(file.path(jpgPath,"ED7.jpg"), width = pdf_width, height = pdf_height, compiled)
+# ggsave(file.path(jpgPath,"ED7.jpg"), width = pdf_width, height = pdf_height, compiled)
 ```
 
 
-# Extended Data 8: Cervical: GO analysis of DMPs
+# Extended Data 7: Cervical: GO analysis of DMPs
 
 ```{r}
 load(here("1-ewas","2-cervical","2-output","gsea-clusterProfiler.Rdata"))
@@ -3682,11 +3633,95 @@ pdf_height <- 11.7   # Height in inches (a4: 11.7)
 compiled <- bp_dot + mf_dot + cc_dot 
   
 compiled <-  compiled + plot_annotation(tag_levels = 'a') + 
-  plot_layout(design = layout)
+  plot_layout(design = layout)&
+    theme(plot.tag = element_text(face = 'bold'))
 
 ggsave(file.path(outPath,"ED8.pdf"), width = pdf_width, height = pdf_height, compiled)
-ggsave(file.path(jpgPath,"ED8.jpg"), width = pdf_width, height = pdf_height, compiled)
+# ggsave(file.path(jpgPath,"ED8.jpg"), width = pdf_width, height = pdf_height, compiled)
 ```
+
+# Extended Data 8: Index training and evaluation 
+
+## a) Buccal: Internal validation AUC 
+
+```{r Internal Validation AUC plot1, echo=FALSE, message=FALSE}
+ 
+ED1a <- plot_performance_compare(training_buccal, training_buccal$AUC_val, sets = 12) + labs(title = 'WID-buccal') + annotate("segment", x = 25000, xend = 30000, y = 1, yend = 0.93, colour = colour.green, size=1, alpha=0.6, arrow=arrow())
+ED1a
+```
+
+## b) Buccal: OOB 
+
+```{r}
+ED1b <-plot_performance_compare(training_buccal, training_buccal$AUC_oob, sets = 12, legendPos="")+ annotate("segment", x = 25000, xend = 30000, y = 1, yend = 0.89, colour = colour.green, size=1, alpha=0.6, arrow=arrow())
+
+ED1b 
+```
+
+
+## c) Cervical: Internal validation AUC 
+
+```{r Internal Validation AUC plot2, echo=FALSE, message=FALSE}
+ 
+ED1c <- plot_performance_compare(training_cervical, training_cervical$AUC_val, sets = 12,legendPos="") + labs(title = 'WID-cervical') + annotate("segment", x = 25000, xend = 30000, y = 1, yend = 0.93, colour = colour.blue, size=1, alpha=0.6, arrow=arrow())
+ED1c
+```
+
+## d) Cervical: OOB 
+
+```{r}
+ED1d <-plot_performance_compare(training_cervical, training_cervical$AUC_oob, sets = 12,legendPos="")  + annotate("segment", x = 25000, xend = 30000, y = 0.93, yend = 0.82, colour = colour.blue, size=1, alpha=0.6, arrow=arrow())
+
+ED1d 
+```
+## e) Blood: Internal validation AUC 
+
+```{r Internal Validation AUC plot3, echo=FALSE, message=FALSE}
+ 
+ED1e <- plot_performance_compare(training_blood, training_blood$AUC_val, sets = 12) + labs(title = 'WID-blood') + annotate("segment", x = 25000, xend = 30000, y = 0.9, yend = 0.98, colour = colour.red, size=1, alpha=0.6, arrow=arrow())
+ED1e
+```
+
+## f) Blood: OOB 
+
+```{r}
+ED1f <-plot_performance_compare(training_blood, training_blood$AUC_oob, sets = 12,legendPos="")  + annotate("segment", x = 25000, xend = 30000, y = 1, yend = 0.91, colour = colour.red, size=1, alpha=0.6, arrow=arrow())
+
+ED1f
+```
+
+
+
+
+## Compile and save
+
+```{r, message=FALSE, echo=FALSE}
+
+layout <- "
+AA
+BC
+BC
+DE
+DE
+FG
+FG
+"
+
+
+pdf_width <- 8.3  # Width in inches (a4)
+pdf_height <- 11.7   # Height in inches (a4: 11.7)
+
+
+compiled <- guide_area() + ED1a + ED1b + ED1c + ED1d + ED1e + ED1f
+  
+compiled <-  compiled + plot_annotation(tag_levels = 'a') + 
+  plot_layout(design = layout, guides='collect',axes = "collect")
+
+ggsave(file.path(outPath,"ED2.pdf"), width = pdf_width, height = pdf_height, compiled)
+ggsave(file.path(jpgPath,"ED2.jpg"), width = pdf_width, height = pdf_height, compiled)
+```
+
+
 
 
 
@@ -3797,6 +3832,7 @@ s7g <- plot_roc_dichot(factor(blood_val$type), blood_val$WID_blood_BC, factor(bl
 
 s7g
 ```
+
 ## Compile and save
 
 ```{r, message=FALSE, echo=FALSE}
@@ -3815,10 +3851,11 @@ pdf_height <- 8   # Height in inches (a4: 11.7)
 compiled <- s7a + s7b + s7c + s7d + s7e + s7f + s7g
   
 compiled <-  compiled + plot_annotation(tag_levels = 'a') + 
-  plot_layout(design = layout)
+  plot_layout(design = layout)&
+    theme(plot.tag = element_text(face = 'bold'))
 
 ggsave(file.path(outPath,"ED9.pdf"), width = pdf_width, height = pdf_height, compiled)
-ggsave(file.path(jpgPath,"ED9.jpg"), width = pdf_width, height = pdf_height, compiled)
+# ggsave(file.path(jpgPath,"ED9.jpg"), width = pdf_width, height = pdf_height, compiled)
 ```
 
 
@@ -3855,7 +3892,7 @@ temp$age_at_menarche_factor <- as.factor(temp$age_at_menarche_factor)
 
 s8a <- ggplot(data=temp, aes(x = age_at_menarche_factor, y = WID_buccal_BC_adj)) +
   geom_boxplot(aes(fill = type),
-               alpha = 0.2) +
+               alpha = 0.2, outlier.shape = NA) +
   ggbeeswarm::geom_quasirandom(aes(colour = type),
                                alpha = 0.5, size = 0.5) +
   scale_color_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control)) +  # Add linear fit with confidence interval
@@ -3874,6 +3911,7 @@ s8a <- ggplot(data=temp, aes(x = age_at_menarche_factor, y = WID_buccal_BC_adj))
 
 print(s8a)
 ```
+
 ## b) first degree relatives with BC 0 and ≥1
 
 Not included: 
@@ -3884,13 +3922,10 @@ Not included:
 
 ```{r}
 # first degree relatives with BC 0 and ≥1
-
-
-
 s8b <- ggplot(data=temp, aes(x = as.factor(first_degree_relatives_with_BC),
                      y = WID_buccal_BC_adj)) +
   geom_boxplot(aes(fill = type),
-               alpha = 0.2) +
+               alpha = 0.2, outlier.shape = NA) +
   ggbeeswarm::geom_quasirandom(aes(colour = type),
                                alpha = 0.5, size = 0.5) +
   scale_color_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control)) +  # Add linear fit with confidence interval
@@ -3945,7 +3980,7 @@ temp$Pregnancy_age_1st_live_born_factor <- as.factor(temp$Pregnancy_age_1st_live
 
 s8c <- ggplot(data=temp, aes(x = Pregnancy_age_1st_live_born_factor, y = WID_buccal_BC_adj)) +
   geom_boxplot(aes(fill = type),
-               alpha = 0.2) +
+               alpha = 0.2, outlier.shape = NA) +
   ggbeeswarm::geom_quasirandom(aes(colour = type),
                                alpha = 0.5, size = 0.5) +
   scale_color_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control)) +  # Add linear fit with confidence interval
@@ -3990,7 +4025,7 @@ buccal_val$menopause <- factor(buccal_val$menopause, levels=c("Pre","Post"))
 
 s8d <- ggplot(data=temp, aes(x = menopause, y = WID_buccal_BC_adj)) +
   geom_boxplot(aes(fill = type),
-               alpha = 0.2) +
+               alpha = 0.2, outlier.shape = NA) +
   ggbeeswarm::geom_quasirandom(aes(colour = type),
                                alpha = 0.5, size = 0.5) +
   scale_color_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control)) +  # Add linear fit with confidence interval
@@ -4025,7 +4060,7 @@ filtered_tmp <- subset(buccal_val, menopause == "Post")
 
 s8e <- ggplot(data=filtered_tmp, aes(x = HRT_ever, y = WID_buccal_BC_adj)) +
   geom_boxplot(aes(fill = type),
-               alpha = 0.2) +
+               alpha = 0.2, outlier.shape = NA) +
   ggbeeswarm::geom_quasirandom(aes(colour = type),
                                alpha = 0.5, size = 0.5) +
   scale_color_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control)) +  # Add linear fit with confidence interval
@@ -4067,7 +4102,7 @@ temp <- buccal_val[which(buccal_val$stage_N!=""),]
 
 s8f <- ggplot(data=temp, aes(x = stage_N, y = WID_buccal_BC_adj)) +
   geom_boxplot(aes(fill = type),
-               alpha = 0.2) +
+               alpha = 0.2, outlier.shape = NA) +
   ggbeeswarm::geom_quasirandom(aes(colour = type),
                                alpha = 0.5, size = 0.5) +
   scale_color_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control)) +  # Add linear fit with confidence interval
@@ -4123,7 +4158,7 @@ temp$age_at_menarche_factor <- as.factor(temp$age_at_menarche_factor)
 
 s9a <- ggplot(data=temp, aes(x = age_at_menarche_factor, y = WID_cervical_BC_adj)) +
   geom_boxplot(aes(fill = type),
-               alpha = 0.2) +
+               alpha = 0.2, outlier.shape = NA) +
   ggbeeswarm::geom_quasirandom(aes(colour = type),
                                alpha = 0.5, size = 0.5) +
   scale_color_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control)) +  # Add linear fit with confidence interval
@@ -4143,6 +4178,7 @@ s9a <- ggplot(data=temp, aes(x = age_at_menarche_factor, y = WID_cervical_BC_adj
 
 print(s9a)
 ```
+
 ## h) first degree relatives with BC 0 and ≥1
 
 Not included: 
@@ -4153,13 +4189,10 @@ Not included:
 
 ```{r}
 # first degree relatives with BC 0 and ≥1
-
-
-
 s9b <- ggplot(data=cervical_val, aes(x = as.factor(first_degree_relatives_with_BC),
                      y = WID_cervical_BC_adj)) +
   geom_boxplot(aes(fill = type),
-               alpha = 0.2) +
+               alpha = 0.2, outlier.shape = NA) +
   ggbeeswarm::geom_quasirandom(aes(colour = type),
                                alpha = 0.5, size = 0.5) +
   scale_color_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control)) +  # Add linear fit with confidence interval
@@ -4214,7 +4247,7 @@ temp$Pregnancy_age_1st_live_born_factor <- as.factor(temp$Pregnancy_age_1st_live
 
 s9c <- ggplot(data=temp, aes(x = Pregnancy_age_1st_live_born_factor, y = WID_cervical_BC_adj)) +
   geom_boxplot(aes(fill = type),
-               alpha = 0.2) +
+               alpha = 0.2, outlier.shape = NA) +
   ggbeeswarm::geom_quasirandom(aes(colour = type),
                                alpha = 0.5, size = 0.5) +
   scale_color_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control)) +  # Add linear fit with confidence interval
@@ -4259,7 +4292,7 @@ cervical_val$menopause <- factor(cervical_val$menopause, levels=c("Pre","Post"))
 
 s9d <- ggplot(data=cervical_val, aes(x = menopause, y = WID_cervical_BC_adj)) +
   geom_boxplot(aes(fill = type),
-               alpha = 0.2) +
+               alpha = 0.2, outlier.shape = NA) +
   ggbeeswarm::geom_quasirandom(aes(colour = type),
                                alpha = 0.5, size = 0.5) +
   scale_color_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control)) +  # Add linear fit with confidence interval
@@ -4289,12 +4322,11 @@ not included: +
               
 
 ```{r}
-
 filtered_tmp <- subset(cervical_val, menopause == "Post")
 
 s9e <- ggplot(data=filtered_tmp, aes(x = HRT_ever, y = WID_cervical_BC_adj)) +
   geom_boxplot(aes(fill = type),
-               alpha = 0.2) +
+               alpha = 0.2, outlier.shape = NA) +
   ggbeeswarm::geom_quasirandom(aes(colour = type),
                                alpha = 0.5, size = 0.5) +
   scale_color_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control)) +  # Add linear fit with confidence interval
@@ -4336,7 +4368,7 @@ temp <- cervical_val[which(cervical_val$stage_N!=""),]
 
 s9f <- ggplot(data=temp, aes(x = stage_N, y = WID_cervical_BC_adj)) +
   geom_boxplot(aes(fill = type),
-               alpha = 0.2) +
+               alpha = 0.2, outlier.shape = NA) +
   ggbeeswarm::geom_quasirandom(aes(colour = type),
                                alpha = 0.5, size = 0.5) +
   scale_color_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control)) +  # Add linear fit with confidence interval
@@ -4382,10 +4414,11 @@ pdf_height <- 11.7   # Height in inches (a4: 11.7)
 compiled <- s8a + s8b + s8c + s8d + s8e + s8f  + s9a + s9b + s9c + s9d + s9e + s9f 
   
 compiled <-  compiled + plot_annotation(tag_levels = 'a') + 
-  plot_layout(design = layout)
+  plot_layout(design = layout) &
+    theme(plot.tag = element_text(face = 'bold'))
 
 ggsave(file.path(outPath,"ED10.pdf"), width = pdf_width, height = pdf_height, compiled)
-ggsave(file.path(jpgPath,"ED10.jpg"), width = pdf_width, height = pdf_height, compiled)
+# ggsave(file.path(jpgPath,"ED10.jpg"), width = pdf_width, height = pdf_height, compiled)
 
 
 ```
@@ -4396,7 +4429,7 @@ ggsave(file.path(jpgPath,"ED10.jpg"), width = pdf_width, height = pdf_height, co
 ```{r}
 ## FORECEE
 a <- ggplot(data = blood_3c_val, aes(x = hepidish_Neutro, y = WID_buccal_BC_adj_neutro, color = type, fill = factor(type))) +
-  geom_point(alpha=0.2,size=2) +  # Plot points
+  geom_point(alpha=0.4,size=1) +  # Plot points
   geom_smooth(method = "lm", se = TRUE, aes(group = type)) +
   scale_color_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control)) +  # Add linear fit with confidence interval
   labs(
@@ -4420,7 +4453,7 @@ b <- plot_roc_dichot(factor(blood_3c_val$type), blood_3c_val$WID_buccal_BC_adj_n
 
 
 c <- ggplot(data = blood_3c_val, aes(x = hepidish_Neutro, y = WID_cervical_BC_adj_neutro, color = type, fill = factor(type))) +
-  geom_point(alpha=0.2,size=2) +  # Plot points
+  geom_point(alpha=0.4,size=1) +  # Plot points
   geom_smooth(method = "lm", se = TRUE, aes(group = type)) +
   scale_color_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control)) +  # Add linear fit with confidence interval
   labs(
@@ -4440,7 +4473,7 @@ d <- plot_roc_dichot(factor(blood_3c_val$type), blood_3c_val$WID_cervical_BC_adj
 
 ## WANG
 e <- ggplot(data = blood_val, aes(x = hepidish_Neutro, y = WID_buccal_BC_adj, color = type, fill = factor(type))) +
-  geom_point(alpha=0.2,size=2) +  # Plot points
+  geom_point(alpha=0.5,size=1) +  # Plot points
   geom_smooth(method = "lm", se = TRUE, aes(group = type)) +
   scale_color_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control)) +  # Add linear fit with confidence interval
   labs(
@@ -4463,7 +4496,7 @@ f <- plot_roc_dichot(factor(blood_val$type), blood_val$WID_buccal_BC_adj, factor
 
 
 g <- ggplot(data = blood_val, aes(x = hepidish_Neutro, y = WID_cervical_BC_adj, color = type, fill = factor(type))) +
-  geom_point(alpha=0.2,size=2) +  # Plot points
+  geom_point(alpha=0.4,size=1) +  # Plot points
   geom_smooth(method = "lm", se = TRUE, aes(group = type)) +
   scale_color_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control)) +  # Add linear fit with confidence interval
   labs(
@@ -4484,7 +4517,7 @@ h <- plot_roc_dichot(factor(blood_val$type), blood_val$WID_cervical_BC_adj, fact
                             direction = "<",textSize=textSize)
 
 
-pdf_width <- 8.3  # Width in inches (a4: 8.3)
+pdf_width <- 10  # Width in inches (a4: 8.3)
 pdf_height <- 6   # Height in inches (a4: 11.7)
 
 
@@ -4495,1803 +4528,12 @@ EFGH
 compiled <- a + b+ c+ d+ e+ f+g+h
   
 compiled <-  compiled + plot_annotation(tag_levels = 'a',title = 'WID-buccal/cervical-BC in blood samples') + 
-  plot_layout(design = layout)
+  plot_layout(design = layout) &
+    theme(plot.tag = element_text(face = 'bold'))
 
 ggsave(file.path(outPath,"ED11.pdf"), width = pdf_width, height = pdf_height, compiled)
-ggsave(file.path(jpgPath,"ED11.jpg"), width = pdf_width, height = pdf_height, compiled)
+# ggsave(file.path(jpgPath,"ED11.jpg"), width = pdf_width, height = pdf_height, compiled)
 
 
 
 ```
-
-
-
-#=========DELETED FIGURES========
-
-# Extended Data 3: PCA heatmaps and coloured by ic 
-
-UPDATE APRIL 2024: This figure is replaced by the new Extended Data Figure 1, with all PCA plots.
-
-**This figure is edited in illustrator, hence do not regenerate unless data changes**
-
-```{r}
-# Is run from another script and edited in Illustrator: legend title (a) and legends in correct positions (b-d)
-source(here("4-markdown-figures","PCAheatmaps.R"))
-```
-
-
-
-# Figure 4
-
-**Figure 4: Comparison of buccal and cervical WID-BC indices (adjusted for age and IC): a cross-tissue comparison.**
-
-1. Comparing the WID-buccal-BC index to the WID-cervical-BC index in the tissue they have been developed on in paired individuals from the External Validation Sets.
-2. Area under the receiver operating characteristic curve (AUROC) for WID-buccal and WID-cervical, along with their combined sum, in paired individuals from the External Validation Sets.
-3. The WID-buccal-BC index in buccal versus cervical tissue in paired individuals from the External Validation Sets.
-4. Area under the receiver operating characteristic curve (AUROC) for WID-buccal-BC in cervical tissue (blue) and buccal tissue (turquoise), in paired individuals from the External Validation Sets.
-5. The WID-cervical-BC index in buccal versus cervical tissue in paired individuals from the External Validation Sets.
-6. Area under the receiver operating characteristic curve (AUROC) for WID-cervical-BC in cervical tissue (blue) and buccal tissue (turquoise), in paired individuals from the External Validation Sets.
-
-
-## a) WID-buccal versus WID-cervical
-
-```{r}
-
-# Merge the dataframes based on the 'id' column, re-order, etcetera.
-reorder <- match(buccal_val$id,cervical_val$id)
-wid_c <- cervical_val[reorder[!is.na(reorder)],]
-wid_b <- buccal_val[!is.na(reorder),]
-merged_df <- merge(wid_c, wid_b, by = 'id')
-merged_df$sum <- merged_df$WID_buccal_BC_adj.y + merged_df$WID_cervical_BC_adj.x
-
-
-a4 <- ggplot(merged_df, aes(x = WID_cervical_BC_adj.x, y = WID_buccal_BC_adj.y, color = type.x, fill = factor(type.y))) +
-  geom_point(alpha=0.2,size=2) +  # Plot points
-  geom_smooth(method = "lm", se = TRUE, aes(group = type.y)) +
-  scale_color_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control)) +  # Add linear fit with confidence interval
-  labs(
-    y = "WID-buccal-BC index\nin buccal tissue",
-    x = "WID-cervical-BC index\nin cervical tissue",
-    title = "WID indices in their own tissue") + theme_minimal() +
-  theme(legend.title = element_blank()) +
-  theme(legend.position = "none") +  # Remove legend
-  theme(panel.background = element_blank()) +  
-  stat_cor(method = "pearson", show.legend = FALSE, label.x.npc='left', label.y.npc='top', size = 2.8) + 
-  scale_fill_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control))
-
-a4
-
-```
-
-
-## b) AUC of sum
-
-```{r}
-reorder <- match(buccal_val$id,cervical_val$id)
-
-wid_c <- cervical_val[reorder[!is.na(reorder)],]
-wid_b <- buccal_val[!is.na(reorder),]
-
-# Merge the dataframes based on the 'id' column
-merged_df <- merge(wid_c, wid_b, by = 'id')
-
-merged_df$sum <- merged_df$WID_buccal_BC_adj.y + merged_df$WID_cervical_BC_adj.x
-merged_df$mean <- rowMeans(merged_df[, c("WID_buccal_BC_adj.y", "WID_cervical_BC_adj.x")])
-merged_df$product <- merged_df$WID_buccal_BC_adj.y * merged_df$WID_cervical_BC_adj.x
-merged_df$distance <- sqrt((merged_df$WID_buccal_BC_adj.y - merged_df$WID_cervical_BC_adj.x)^2 + (merged_df$WID_buccal_BC_adj.y - merged_df$WID_cervical_BC_adj.x)^2)
-
-b4 <- plot_triple_roc(factor(wid_b$type), wid_b$WID_buccal_BC_adj, factor(wid_c$type), wid_c$WID_cervical_BC_adj, factor(merged_df$type.x), merged_df$sum, col1 = colour.green, col2 = colour.blue, col3 = colour.sum, title1 = "WID-buccal-BC", title2 = "WID-cervical-BC", title3 = "Sum", style = "default",
-                            direction1 = "<",direction2 = "<", generalTitle="", textCol1 = "white",textCol3="black",textSize=2.1, x1=0.55,y1=0.35,x2=0.55,y2=0.1,x3=0.2,y3=0.85)
-
-b4
-
-```
-
-
-## c) WID-buccal-BC in two tissues: scatterplot
-
-```{r}
-
-# Merge the dataframes based on the 'id' column, re-order, etcetera.
-reorder <- match(buccal_val$id,cervical_val$id)
-wid_c <- cervical_val[reorder[!is.na(reorder)],]
-wid_b <- buccal_val[!is.na(reorder),]
-merged_df <- merge(wid_c, wid_b, by = 'id')
-
-c4 <- ggplot(merged_df, aes(x = WID_buccal_BC_adj.x, y = WID_buccal_BC_adj.y, color = type.x, fill = factor(type.x))) +
-  geom_point(alpha=0.2,size=2) +  # Plot points
-  geom_smooth(method = "lm", se = TRUE, aes(group = type.x)) +
-  scale_color_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control)) +  # Add linear fit with confidence interval
-  labs(
-    y = "WID-buccal-BC index\nin cervical tissue",
-    x = "WID-buccal-BC index\nin buccal tissue",
-    title = "WID-buccal-BC in buccal and cervical tissue")  + theme_minimal() +
-  theme(legend.title = element_blank()) +
-  theme(legend.position = "none") +  # Remove legend
-  theme(panel.background = element_blank()) +  
-  stat_cor(method = "pearson", show.legend = FALSE, label.x.npc='left', label.y.npc='top', size = 2.8) + 
-  scale_fill_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control))
-
-c4
-
-```
-## d) AUC:  WID-buccal-BC in two tissues
-
-```{r}
-
-# Merge the dataframes based on the 'id' column, re-order, etcetera.
-reorder <- match(buccal_val$id,cervical_val$id)
-wid_c <- cervical_val[reorder[!is.na(reorder)],]
-wid_b <- buccal_val[!is.na(reorder),]
-merged_df <- merge(wid_c, wid_b, by = 'id')
-
-
-d4 <- plot_double_roc(merged_df$type.x, merged_df$WID_buccal_BC_adj.y, merged_df$type.x, merged_df$WID_buccal_BC_adj.x, col1 = colour.green, col2 = colour.blue, title1 = "Buccal tissue", title2 = "Cervical tissue", style = "default",
-                            direction1 = "<",direction2 = "<", generalTitle="",textSize = 2.1)
-
-d4
-```
-
-
-## e) WID-cervical-BC in two tissues: scatterplot
-
-```{r}
-
-# Merge the dataframes based on the 'id' column, re-order, etcetera.
-reorder <- match(buccal_val$id,cervical_val$id)
-wid_c <- cervical_val[reorder[!is.na(reorder)],]
-wid_b <- buccal_val[!is.na(reorder),]
-merged_df <- merge(wid_c, wid_b, by = 'id')
-
-e4 <- ggplot(merged_df, aes(x = WID_cervical_BC_adj.x, y = WID_cervical_BC_adj.y, color = type.x, fill = factor(type.x))) +
-  geom_point(alpha=0.2,size=2) +  # Plot points
-  geom_smooth(method = "lm", se = TRUE, aes(group = type.x)) +
-  scale_color_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control)) +  # Add linear fit with confidence interval
-  labs(
-    y = "WID-cervical-BC index\nin cervical tissue",
-    x = "WID-cervical-BC index\nin buccal tissue",
-    title = "WID-cervical-BC in buccal and cervical tissue") + theme_minimal() +
-  theme(legend.title = element_blank()) +
-  theme(legend.position = "none") +  # Remove legend
-  theme(panel.background = element_blank()) +  
-  stat_cor(method = "pearson", show.legend = FALSE, label.x.npc='left', label.y.npc='top', size = 2.8) + 
-  scale_fill_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control))
-
-e4
-
-```
-## f) AUC:  WID-cervical-BC in two tissues
-
-```{r}
-
-# Merge the dataframes based on the 'id' column, re-order, etcetera.
-reorder <- match(buccal_val$id,cervical_val$id)
-wid_c <- cervical_val[reorder[!is.na(reorder)],]
-wid_b <- buccal_val[!is.na(reorder),]
-merged_df <- merge(wid_c, wid_b, by = 'id')
-
-
-f4 <- plot_double_roc(merged_df$type.x, merged_df$WID_cervical_BC_adj.x, merged_df$type.x, merged_df$WID_cervical_BC_adj.y, col1 = colour.blue, col2 = colour.green, title1 = "Cervical tissue", title2 = "Buccal tissue", style = "default",
-                            direction1 = "<",direction2 = "<", generalTitle="",textSize = 2.1)
-
-f4
-```
-
-
-## Compile and save
-```{r, message=FALSE, echo=FALSE}
-pdf_width <- 8.3  # Width in inches (a4: 8.3)
-pdf_height <- 9   # Height in inches (a4: 11.7)
-
-
-
-layout <- "
-AAABB
-CCCDD
-EEEFF
-"
-compiled <- a4 + b4 + c4 + d4 + e4 + f4
-
-compiled <-  compiled + plot_annotation(tag_levels = 'a') +
-  plot_layout(design = layout)
-
-ggsave(file.path(outPath,"F4.pdf"), width = pdf_width, height = pdf_height, compiled)
-ggsave(file.path(jpgPath,"F4.jpg"), width = pdf_width, height = pdf_height, compiled)
-```
-
-
-# Extended Data: Blood: GO analysis of DMPs
-This figure was taken out as the GO analysis was performed on CpGs significant prior to multiple testing correction.
-
-
-Caption: 
-**Functional enrichment analysis of differentially methylated positions (significant prior to BH multiple testing correction, as none retained significance thereafter) identified between breast cancer cases and controls in the blood Discovery Set (52,147 CpGs). The figure illustrates the top 10 enriched:**
-a) Biological processes
-b) Molecular functions
-c) Cellular functions
-
-
-```{r}
-load(here("1-ewas","3-blood","2-output","gsea-clusterProfiler.Rdata"))
-
-## Visualize -------------------
-s6a <- enrichplot::dotplot(bp) 
-s6b <- enrichplot::dotplot(mf) 
-s6c <- enrichplot::dotplot(cc) 
-
-layout <- "
-A
-B
-C
-"
-
-
-pdf_width <- 8.3  # Width in inches (a4)
-pdf_height <- 11.7   # Height in inches (a4: 11.7)
-
-
-compiled <- s6a + s6b + s6c
-  
-compiled <-  compiled + plot_annotation(tag_levels = 'a') + 
-  plot_layout(design = layout)
-
-ggsave(file.path(outPath,"ED8.pdf"), width = pdf_width, height = pdf_height, compiled)
-ggsave(file.path(jpgPath,"ED8.jpg"), width = pdf_width, height = pdf_height, compiled)
-```
-
-
-#==========EXTRA FIGURES, NOT USED=================
-Messy and unsorted.
-
-# Existing WID-BC in breast datasets
-
-## a) Boxplot tissue at risk
-```{r}
-library(dplyr)
-
-# Rename BRCA1/BRCA2 
-tissue_at_risk_val <- tissue_at_risk_val %>%
-  mutate(type = ifelse(type %in% c("Risk_reduction_BRCA1", "Risk_reduction_BRCA2"), "Risk_reduction_BRCA1_BRCA2", type))
-
-
-# Long format
-tissue_at_risk_long <- tidyr::pivot_longer(tissue_at_risk_val,
-                                    cols = c(WID_buccal_BC_adj,WID_BC_adj, WID_cervical_BC_adj),
-                                    names_to = "index",
-                                    values_to = "score"
-)
-
-
-# id for pairing
-tissue_at_risk_long <- tissue_at_risk_long |> 
-  mutate(pairs = ifelse(!grepl("adjacent|negative", type), NA, id))
-
-# change order of indices for plotting
-tissue_at_risk_long$index <- factor(tissue_at_risk_long$index, levels=c("WID_buccal_BC_adj","WID_cervical_BC_adj","WID_BC_adj"))
-
-# change order of type for plotting
-tissue_at_risk_long$type <- factor(tissue_at_risk_long$type, levels = c("Normal", "Risk_reduction_BRCA1_BRCA2", "Normal_adjacent", "Triple_negative_tumour"))
-
-
-# Facet wrap by index
-a5 <- ggplot(tissue_at_risk_long, aes(x = type, y = score)) +
-  geom_boxplot(aes(fill = index), cex = 0.5, fatten = 2) +
-  ggbeeswarm::geom_beeswarm(alpha = 0.5, size = 0.5) +
-  labs(
-    x = "",
-    y = "Index"
-  )   + 
-  # geom_line(aes(group=pairs), size=0.5, color='gray', alpha=0.6) +
-  theme_minimal() +
-  scale_fill_manual(labels = c("WID-buccal-BC","WID-cervical-BC","WID-BC"), values = c("WID_buccal_BC_adj" = colour.green, "WID_cervical_BC_adj" = colour.blue, "WID_BC_adj" = colour.red)) +
-  theme(legend.position = "top", 
-        axis.text.x = element_text(angle = 45, hjust = 1, size=7)) +
-  scale_x_discrete(labels = c("Normal tissue", "Normal from\nBRCA1/BRCA2\nmutation carrier","Normal-adjacent\ntissue", "Triple negative\nbreast cancer\ntissue")) +
-  facet_wrap(~index, labeller = labeller(index = c("WID_buccal_BC_adj" = "WID-buccal-BC", "WID_cervical_BC_adj" = "WID-cervical-BC", "WID_BC_adj" = "WID-BC")),
-             scales = 'free') +
-  ggpubr::stat_compare_means(comparisons = list(
-   c("Normal", "Risk_reduction_BRCA1_BRCA2"), 
-  #  c("Normal", "Normal_adjacent"), # insignificant in all
-    c("Normal", "Triple_negative_tumour")),
-                               label = 'p.signif', step.increase = 0.1, vjust = +0.6,textsize=2, hide.ns = T) +
-
-  labs(fill = "Index")  +
-  labs(y = '',
-       title = 'Tissue at risk set (EPIC array)')
-
-print(a5)
-```
-
-## b) AUC tissue at risk normal-adjacent
-
-```{r}
-
-## Normal-adjacent versus triple negative
-tmp <- tissue_at_risk_val |> 
-  dplyr::filter(type %in% c("Normal_adjacent","Triple_negative_tumour")) |> 
-  droplevels()
-
-b5 <- plot_triple_roc(factor(tmp$type), tmp$WID_BC_adj, factor(tmp$type), tmp$WID_cervical_BC_adj, factor(tmp$type), tmp$WID_buccal_BC_adj, col1 = colour.red, col2 = colour.blue, col3 = colour.green, title1 = "WID-BC", title2 = "WID-cervical-BC", title3 = "WID-buccal-BC", style = "default",
-                            direction1 = "<",direction2 = "<", generalTitle="", textCol1 = "white",textSize=2.1,y3=0.35,y2=0.1)
-
-b5
-
-```
-
-## c) Boxplot TCGA
-
-```{r}
-# Long format
-tcga_long <- tidyr::pivot_longer(tcga_val,
-  cols = c(WID_buccal_BC_adj, WID_cervical_BC_adj, WID_BC_adj),
-  names_to = "index",
-  values_to = "score"
-)
-
-
-
-# Keep paired only
-tmp <- tcga_long |>
-  dplyr::group_by(barcode3) |>
-  dplyr::filter(all(c("Control", "Cancer") %in% type)) 
-
-
-
-# Reorder the 'type' variable to have 'Control' first
-tcga_long$type <- factor(tcga_long$type, levels = c('Control', 'Cancer'))
-tcga_long$index <- factor(tcga_long$index, levels = c('WID_buccal_BC_adj', 'WID_cervical_BC_adj','WID_BC_adj'))
-
-# facet wrap by index
-c5 <- tcga_long |>
-  dplyr::filter(barcode3 %in% tmp$barcode3) |>
-  ggplot(aes(x = type, y = score)) +
-  geom_boxplot(aes(fill = index), cex = 0.5, fatten = 2) +
-  ggbeeswarm::geom_beeswarm(alpha = 0.5, size = 0.5) +
-  geom_line(aes(group = barcode3),
-            alpha = 0.5,
-            colour = 'gray',
-            linewidth = 0.5) +
-  labs(x = "",
-       y = "Index") +
-  theme_minimal() +
-  scale_x_discrete(labels = c("Matched\nnormal tissue", 'Breast cancer\ntissue')) +
-  scale_fill_manual(labels = c("WID-buccal-BC", "WID-cervical-BC", "WID-BC"), values = c("WID_cervical_BC_adj" = colour.blue, "WID_buccal_BC_adj" = colour.green, "WID_BC_adj" = colour.red)) +
-  theme(legend.position = "top",
-        axis.text.x = element_text(angle = 45, hjust = 1)) +
-  facet_wrap(~index,scales = 'free',labeller = labeller(index = c("WID_buccal_BC_adj" = "WID-buccal-BC", "WID_cervical_BC_adj" = "WID-cervical-BC", "WID_BC_adj" = "WID-BC"))) +
-  ggpubr::stat_compare_means(comparisons = list(c("Control", "Cancer")),
-                             label = 'p.signif',
-                             hide.ns = T, step.increase = 0.05, vjust = +0.6,textsize=2) +
- labs(fill = "index") +
-  labs(y = '',
-       title = 'TCGA Set (450K array)')
-
-
-print(c5)
-```
-
-
-## d) AUC TCGA
-
-```{r}
-# Reorder the 'type' variable to have 'Control' first
-tcga_val$type <- factor(tcga_val$type, levels = c('Control', 'Cancer'))
-
-
-
-d5 <- plot_triple_roc(factor(tcga_val$type), tcga_val$WID_BC_adj, factor(tcga_val$type), tcga_val$WID_cervical_BC_adj, factor(tcga_val$type), tcga_val$WID_buccal_BC_adj, col1 = colour.red, col2 = colour.blue, col3 = colour.green, title1 = "WID-BC", title2 = "WID-cervical-BC", title3 = "WID-buccal-BC", style = "default",
-                            direction1 = "<",direction2 = "<", generalTitle="", textCol1 = "white",textSize=2.1,y3=0.35,y2=0.1)
-
-
-d5
-```
-
-## e) Boxplot GSE225845
-
-```{r}
-# Long format
-GSE225845_long <- tidyr::pivot_longer(GSE225845_val,
-                                    cols = c(WID_buccal_BC_adj, WID_cervical_BC_adj,WID_BC_adj),
-                                    names_to = "index",
-                                    values_to = "score"
-)
-
-GSE225845_long$type <- factor(GSE225845_long$type, levels=c("normal","adj_norm","tumor"))
-
-# change order of indices for plotting
-GSE225845_long$index <- factor(GSE225845_long$index, levels=c("WID_buccal_BC_adj","WID_cervical_BC_adj","WID_BC_adj"))
-
-# Facet wrap by index
-e5 <- ggplot(GSE225845_long, aes(x = type, y = score)) +
-  geom_boxplot(aes(fill = index), cex = 0.5, fatten = 2) +
-  ggbeeswarm::geom_beeswarm(alpha = 0.5, size = 0.5) +
-  labs(
-    x = "",
-    y = "Index"
-  )   + 
-  # geom_line(aes(group=pairs), size=0.5, color='gray', alpha=0.6) +
-  theme_minimal() +
-  scale_fill_manual(labels = c("WID-buccal-BC","WID-cervical-BC","WID-BC"), values = c("WID_buccal_BC_adj" = colour.green, "WID_cervical_BC_adj" = colour.blue, "WID_BC_adj" = colour.red)) +
-  theme(legend.position = "top", 
-        axis.text.x = element_text(hjust = 1)) +
-  scale_x_discrete(labels = c("Normal", "Normal\nadjacent", "Tumor")) +
-  facet_wrap(~index, labeller = labeller(index = c("WID_buccal_BC_adj" = "WID-buccal-BC", "WID_cervical_BC_adj" = "WID-cervical-BC", "WID_BC_adj" = "WID-BC")),
-             scales = 'free') +
-  ggpubr::stat_compare_means(comparisons = list(
-    c("normal", "tumor"),
-    c("normal", "adj_norm"),
-    c("adj_norm", "tumor")),
-                               label = 'p.signif', step.increase = 0.1, vjust = +0.6,textsize=2, hide.ns = T) +
-  labs(fill = "Index")  +
-  labs(y = '',
-       title = 'GSE225845 (EPIC array)')
-
-print(e5)
-```
-
-## f) AUC GSE225845 normal-adjacent
-
-```{r}
-
-## Normal-adjacent versus triple negative
-tmp <- GSE225845_val |> 
-  dplyr::filter(type %in% c("normal","tumor")) |> 
-  droplevels()
-
-f5 <- plot_triple_roc(factor(tmp$type), tmp$WID_BC_adj, factor(tmp$type), tmp$WID_cervical_BC_adj, factor(tmp$type), tmp$WID_buccal_BC_adj, col1 = colour.red, col2 = colour.blue, col3 = colour.green, title1 = "WID-BC", title2 = "WID-cervical-BC", title3 = "WID-buccal-BC", style = "default",
-                            direction1 = "<",direction2 = "<", generalTitle="", textCol1 = "white",textSize=2.1,y3=0.35,y2=0.1)
-
-f5
-
-```
-
-
-## Compile and save
-```{r, message=FALSE, echo=FALSE}
-pdf_width <- 8.3  # Width in inches (a4: 8.3)
-pdf_height <- 11.7   # Height in inches (a4: 11.7)
-
-
-layout <- "
-AAAAAABB
-CCCCCCDD
-EEEEEEFF
-"
-compiled <- a5 + b5 + c5 + d5 + e5 + f5
-  
-compiled <-  compiled + plot_annotation(tag_levels = 'a') + 
-  plot_layout(design = layout)
-
-ggsave(file.path(outPath,"extra_bc.pdf"), width = pdf_width, height = pdf_height, compiled)
-ggsave(file.path(jpgPath,"extra_bc.jpg"), width = pdf_width, height = pdf_height, compiled)
-```
-
-
-
-
-## f) Odds ratio
-
-```{r}
-
-buccal <- readRDS(here("1-ewas", "1-buccal", "delta-beta.Rds")) |> 
-  as.data.frame() |> 
-  dplyr::mutate(padj = p.adjust(type, method = 'BH')) |> 
-  tibble::rownames_to_column('cg')
-
-cervical <- readRDS(here("1-ewas", "2-cervical", "delta-beta.Rds")) |> 
-  as.data.frame() |> 
-  dplyr::mutate(padj = p.adjust(type, method = 'BH'))|> 
-  tibble::rownames_to_column('cg') 
-blood <- readRDS(here("1-ewas", "3-blood", "delta-beta.Rds")) |> 
-  as.data.frame() |> 
-  dplyr::mutate(padj = p.adjust(type, method = 'BH'))|> 
-  tibble::rownames_to_column('cg') 
-
-list = list('A' = buccal,
-            'B' = cervical,
-            'C' = blood)
-
-enrichOR <- function(list, type = "padj", groups = c('all', 'hypo', 'hyper')){
-  
-  all <- unique(c(list[[1]]$cg, list[[2]]$cg, list[[3]]$cg))
-  
-  if(type == "padj"){
-    sig <- lapply(list, function(x) x[x$padj < 0.05,])
-  } else {
-    sig <- lapply(list, function(x) x[x$type < 0.05,])
-  }
-  
-  # set up df
-  df <- data.frame(matrix(nrow = 9, ncol = 5))
-  colnames(df) <- c('group', 'comparison', 'OR', 'ci_lo', 'ci_hi')
-  df$group <- rep(groups, each = 3)
-  df$comparison <- rep(c("AB", "AC", "BC"), 3)
-  
-  for(g in groups){
-    if(g == 'all'){
-      sig_cpgs <- list('A' = sig[[1]]$cg, 'B' = sig[[2]]$cg, 'C' = sig[[3]]$cg)
-    } else if(g == 'hypo'){
-      sig_cpgs = list('A' = sig[[1]][sig[[1]]$dir_type<0,]$cg,
-                      'B' = sig[[2]][sig[[2]]$dir_type<0,]$cg,
-                      'C' = sig[[3]][sig[[3]]$dir_type<0,]$cg)
-    } else {
-      sig_cpgs = list('A' = sig[[1]][sig[[1]]$dir_type>0,]$cg,
-                      'B' = sig[[2]][sig[[2]]$dir_type>0,]$cg,
-                      'C' = sig[[3]][sig[[3]]$dir_type>0,]$cg)
-    }
-    
-  # All
-  
-  # A _ B 
-  x <- length(setdiff(all, unique(c(sig_cpgs[[1]], sig_cpgs[[2]]))))
-  y <- length(setdiff(sig_cpgs[[1]], sig_cpgs[[2]]))
-  z <- length(setdiff(sig_cpgs[[2]], sig_cpgs[[1]]))
-  w <- length(intersect(sig_cpgs[[1]], sig_cpgs[[2]]))
-  
-  assign(paste0(names(list)[1], "_sub"), c('not sig', 'sig'))
-  assign(paste0(names(list)[2], "_sub"), c('not sig', 'sig'))  
-  data <- matrix(c(x, y, z, w), nrow=2, ncol=2, byrow=TRUE)
-  
-  dimnames(data) <- list(assign(names(list)[1], get(paste0(names(list)[1], "_sub"))),
-                         assign(names(list)[2], get(paste0(names(list)[2], "_sub"))))
-  
-  assign(paste0("or_", g, "_AB"), epitools::oddsratio(data))
-  df[df$group==g & df$comparison == 'AB',]$OR <- get(paste0("or_", g, "_AB"))$measure[2,1]
-  df[df$group==g & df$comparison == 'AB',]$ci_lo <- get(paste0("or_", g, "_AB"))$measure[2,2]
-  df[df$group==g & df$comparison == 'AB',]$ci_hi <- get(paste0("or_", g, "_AB"))$measure[2,3]
-  
-  # A _ C
-  x <- length(setdiff(all, unique(c(sig_cpgs[[1]], sig_cpgs[[3]]))))
-  y <- length(setdiff(sig_cpgs[[1]], sig_cpgs[[3]]))
-  z <- length(setdiff(sig_cpgs[[3]], sig_cpgs[[1]]))
-  w <- length(intersect(sig_cpgs[[1]], sig_cpgs[[3]]))
-  
-  assign(paste0(names(list)[1], "_sub"), c('not sig', 'sig'))
-  assign(paste0(names(list)[3], "_sub"), c('not sig', 'sig'))  
-  data <- matrix(c(x, y, z, w), nrow=2, ncol=2, byrow=TRUE)
-  
-  dimnames(data) <- list(assign(names(list)[1], get(paste0(names(list)[1], "_sub"))),
-                         assign(names(list)[3], get(paste0(names(list)[3], "_sub"))))
-  
-  assign(paste0("or_", g, "_AC"), epitools::oddsratio(data))
-  
-  df[df$group==g & df$comparison == 'AC',]$OR <- get(paste0("or_", g, "_AC"))$measure[2,1]
-  df[df$group==g & df$comparison == 'AC',]$ci_lo <- get(paste0("or_", g, "_AC"))$measure[2,2]
-  df[df$group==g & df$comparison == 'AC',]$ci_hi <- get(paste0("or_", g, "_AC"))$measure[2,3]
-  
-  # B _ C
-  x <- length(setdiff(all, unique(c(sig_cpgs[[2]], sig_cpgs[[3]]))))
-  y <- length(setdiff(sig_cpgs[[2]], sig_cpgs[[3]]))
-  z <- length(setdiff(sig_cpgs[[3]], sig_cpgs[[2]]))
-  w <- length(intersect(sig_cpgs[[2]], sig_cpgs[[3]]))
-  
-  assign(paste0(names(list)[2], "_sub"), c('not sig', 'sig'))
-  assign(paste0(names(list)[3], "_sub"), c('not sig', 'sig'))  
-  data <- matrix(c(x, y, z, w), nrow=2, ncol=2, byrow=TRUE)
-  
-  dimnames(data) <- list(assign(names(list)[2], get(paste0(names(list)[2], "_sub"))),
-                         assign(names(list)[3], get(paste0(names(list)[3], "_sub"))))
-  
-  assign(paste0("or_", g, "_BC"), epitools::oddsratio(data))
-  df[df$group==g & df$comparison == 'BC',]$OR <- get(paste0("or_", g, "_BC"))$measure[2,1]
-  df[df$group==g & df$comparison == 'BC',]$ci_lo <- get(paste0("or_", g, "_BC"))$measure[2,2]
-  df[df$group==g & df$comparison == 'BC',]$ci_hi <- get(paste0("or_", g, "_BC"))$measure[2,3]
-  
-  } 
-  
-  
-  return(df)
-  
-}
-
-df <- enrichOR(list, type = 'p')
-
-df <- df |> 
-  dplyr::mutate(comparison = case_match(comparison,
-                                        "AB" ~ 'buccal-cervical',
-                                        "AC" ~ "buccal-blood",
-                                        "BC" ~ "cervical-blood"),
-                group = case_match(group,
-                                    "all" ~ "all significant CpGs (p < 0.05)",
-                                    "hypo" ~ "hypomethylated CpGs (p < 0.05)",
-                                    "hyper" ~ "hypermethylated CpGs (p > 0.05)"))
-
-EDxf <- df |> ggplot(aes(x = comparison)) +
-  geom_point(aes(y = log(OR))) +
-  geom_errorbar(aes(ymin = log(ci_lo), ymax = log(ci_hi)),
-                width = 0.1) +
-  coord_flip() +
-  geom_hline(yintercept = 0,linetype = 'dashed') +
-  facet_wrap(~group,nrow = 3) +
-  theme_bw() +
-  labs(y = 'log (Odds Ratio) for enrichment',
-       x = '')
-```
-
-
-# Distribution of the WID-BC-index with respect to immune cell proportion in the discovery set.
-
-```{r, message=FALSE, echo=FALSE}
-
-# b2 <- ggplot(pheno_buccal, aes(x = ic, y = scores, color = type)) +
-#   geom_point(alpha=0.2,size=2) +  # Plot points
-#   geom_smooth(method = "lm", se = TRUE, aes(group = type, fill = type)) +
-#   scale_color_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control)) +  # Add linear fit with confidence interval
-#   labs(
-#     y = "WID-buccal-BC-BC index",
-#     x = "Immune Cell Proportion"
-#   ) +
-#   theme(legend.title = element_blank()) +
-#   theme(legend.position = "top") +  # Remove legend
-#   theme(panel.background = element_blank(),  # Remove grey background
-#         panel.grid.major = element_blank(),  # Remove major grid lines
-#         panel.grid.minor = element_blank()) + 
-#   stat_cor(method = "pearson", show.legend = FALSE, label.x.npc='left', label.y.npc='middle') 
-# 
-# b2
-
-```
-
-# Distribution of the WID-BC-index with respect to age in the discovery set.
-
-```{r, message=FALSE, echo=FALSE}
-
-# c2 <- ggplot(pheno_buccal, aes(x = age, y = scores, color = type)) +
-#   geom_point(alpha=0.2,size=2) +  # Plot points
-#   geom_smooth(method = "lm", se = TRUE, aes(group = type, fill=type)) +
-#   scale_color_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control)) +  # Add linear fit with confidence interval
-#   labs(
-#     y = "WID-buccal-BC-BC index",
-#     x = "Subject age"
-#   ) +
-#   theme(legend.title = element_blank()) +
-#   theme(legend.position = "none") +  # Remove legend
-#   theme(panel.background = element_blank(),  # Remove grey background
-#         panel.grid.major = element_blank(),  # Remove major grid lines
-#         panel.grid.minor = element_blank()) + 
-#   stat_cor(method = "pearson", show.legend = FALSE, label.x.npc='left', label.y.npc='middle') + 
-#   scale_fill_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control))
-# 
-# c2
-```
-# SOX2 versus indices in >80% epithelial samples
-
-```{r}
-
-tmp <- buccal_val[buccal_val$epi>0.8,]
-
-# 75 out of 187 samples in buccal
-buccal_sox2 <- ggplot(data = tmp, aes(x = SOX2, y = WID_buccal_BC_adj, color = type, fill = factor(type))) +
-  geom_point(alpha=0.2,size=2) +  # Plot points
-  geom_smooth(method = "lm", se = TRUE, aes(group = type)) +
-  scale_color_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control)) +  # Add linear fit with confidence interval
-  labs(
-    y = "WID-buccal-BC",
-    x = "SOX2"
-  ) +
-  theme_minimal() +
-  theme(legend.title = element_blank()) +
-  theme(legend.position = "none") +  # Remove legend
-  theme(panel.background = element_blank()) + 
-  stat_cor(method = "pearson", show.legend = FALSE, label.x.npc='left', label.y.npc='top', size = 3) + 
-  scale_fill_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control))
-
-buccal_sox2 
-
-tmp <- cervical_val[cervical_val$epi>0.8,]
-
-# 40 out of 184 samples in cervical
-cervical_sox2 <- ggplot(data = tmp, aes(x = SOX2, y = WID_cervical_BC_adj, color = type, fill = factor(type))) +
-  geom_point(alpha=0.2,size=2) +  # Plot points
-  geom_smooth(method = "lm", se = TRUE, aes(group = type)) +
-  scale_color_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control)) +  # Add linear fit with confidence interval
-  labs(
-    y = "WID-cervical-BC",
-    x = "SOX2"
-  ) +
-  theme_minimal() +
-  theme(legend.title = element_blank()) +
-  theme(legend.position = "none") +  # Remove legend
-  theme(panel.background = element_blank()) + 
-  stat_cor(method = "pearson", show.legend = FALSE, label.x.npc='left', label.y.npc='top', size = 3) + 
-  scale_fill_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control))
-
-cervical_sox2 
-
-
-```
-
-
-# Comparing WID-buccal and WID-cervical 
-
-## a) Boxplot of WID-buccal and WID-cervical, spaghetti
-
-```{r}
-
-
-# Merge the dataframes based on the 'id' column, re-order, etcetera.
-reorder <- match(buccal_val$id,cervical_val$id)
-wid_c <- cervical_val[reorder[!is.na(reorder)],]
-wid_b <- buccal_val[!is.na(reorder),]
-merged_df <- merge(wid_c, wid_b, by = 'id')
-merged_df$sum <- merged_df$WID_buccal_BC_adj.y + merged_df$WID_cervical_BC_adj.x
-
-
-# Reshape the dataframe to long format
-long_df <- gather(merged_df, key = "score.type", value = "score", WID_buccal_BC_adj.y, WID_cervical_BC_adj.x, sum)
-
-
-# Check if the score.type is "sum" and set it to "sum" if true
-long_df$score.type <- ifelse(long_df$score.type == "sum", "sum", long_df$score.type)
-
-# Add a column indicating the type (buccal or cervical)
-long_df$score.type <- ifelse(long_df$score.type == "WID_cervical_BC_adj.x", "cervical", long_df$score.type)
-
-# Add a column indicating the type (buccal or cervical)
-long_df$score.type <- ifelse(long_df$score.type == "WID_buccal_BC_adj.y", "buccal",long_df$score.type)
-
-x1 <- ggplot(long_df, aes(x = score.type, y = score)) +
-  geom_boxplot() + facet_wrap(~factor(type.x)) +
-  
-  # Add a line between the boxes based on the 'id' column
-  geom_line(aes(x = score.type, y = score, group = id), color = "grey", size = 0.3) +
-  
-  # Set axis labels
-  labs(x = "Score Type", y = "WID-buccal-BC/cervical") +
-  
-  # Customize plot appearance
-  theme_minimal()
-
-x1
-```
-
-## b) AUC separately for > 1 sd euclidian distance between WID-cervical and WID-buccal
-
-```{r}
-# New experiment: if the distance between the WID-buccal and WID-cervical is large, what does it mean?
-# Calculate mean and standard deviation of the dist column
-mean_dist <- mean(merged_df$distance)
-sd_dist <- sd(merged_df$distance)
-
-# Set a threshold for filtering (e.g., 1 standard deviations - 25 samples)
-threshold <- 1
-
-# Filter the dataframe based on the condition
-filtered_df <- merged_df %>%
-  filter(distance > mean_dist + threshold * sd_dist)
-
-# Plot the performance for those samples with > 1 sd 
-x2 <- plot_triple_roc(factor(filtered_df$type.x), filtered_df$WID_buccal_BC_adj, factor(filtered_df$type.x), filtered_df$WID_cervical_BC_adj, factor(filtered_df$type.x), filtered_df$sum, col1 = colour.green, col2 = colour.blue, col3 = colour.sum, title1 = "WID-buccal-BC", title2 = "WID-cervical-BC", title3 = "Sum", style = "default",
-                            direction1 = "<",direction2 = "<", generalTitle="", textCol1 = "black",textCol3="black",textSize=2.1)
-
-x2
-```
-
-## c) AUC separately for < 1 sd euclidian distance between WID-cervical and WID-buccal
-
-```{r}
-# Filter the dataframe based on the condition (159 samples)
-filtered_df <- merged_df %>%
-  filter(distance < mean_dist + threshold * sd_dist)
-
-# Plot the performance for those samples with < 1 sd 
-x3 <- plot_triple_roc(factor(filtered_df$type.x), filtered_df$WID_buccal_BC_adj, factor(filtered_df$type.x), filtered_df$WID_cervical_BC_adj, factor(filtered_df$type.x), filtered_df$sum, col1 = colour.green, col2 = colour.blue, col3 = colour.sum, title1 = "WID-buccal-BC", title2 = "WID-cervical-BC", title3 = "Sum", style = "default",
-                            direction1 = "<",direction2 = "<", generalTitle="", textCol1 = "black",textCol3="black",textSize=2.1)
-
-x3
-```
-
-# Assessing indices across tissues
-
-## x) All figures indices versus ic/neutro
-
-```{r}
-
-# BLOOD VALIDATION DATA -----------------------------------------------------------------------
-
-
-
-
-
-a1 <- ggplot(data = blood_val, aes(x = ic, y = WID_blood_BC_adj_ic, color = type, fill = factor(type))) +
-  geom_point(alpha=0.2,size=2) +  # Plot points
-  geom_smooth(method = "lm", se = TRUE, aes(group = type)) +
-  scale_color_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control)) +  # Add linear fit with confidence interval
-  labs(
-    y = "WID-blood-BC index (ic adjusted)",
-    x = "Immune Cell proportion",
-    title = 'Blood (Wang; PBMCs)'
-  ) +
-  theme_minimal() +
-  theme(legend.title = element_blank()) +
-  theme(legend.position = "none") +  # Remove legend
-  theme(panel.background = element_blank()) + 
-  stat_cor(method = "pearson", show.legend = FALSE, label.x.npc='left', label.y.npc='top', size = 3) + 
-  scale_fill_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control))
-
-a1
-
-a2 <- ggplot(data = blood_val, aes(x = hepidish_Neutro, y = WID_blood_BC_adj, color = type, fill = factor(type))) +
-  geom_point(alpha=0.2,size=2) +  # Plot points
-  geom_smooth(method = "lm", se = TRUE, aes(group = type)) +
-  scale_color_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control)) +  # Add linear fit with confidence interval
-  labs(
-    y = "WID-blood-BC index (neutro adjusted)",
-    x = "Neutrophil proportion",
-    title = 'Blood (Wang; PBMCs)'
-  ) +
-  theme_minimal() +
-  theme(legend.title = element_blank()) +
-  theme(legend.position = "none") +  # Remove legend
-  theme(panel.background = element_blank()) + 
-  stat_cor(method = "pearson", show.legend = FALSE, label.x.npc='left', label.y.npc='top', size = 3) + 
-  scale_fill_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control))
-
-a2
-
-
-a3 <- ggplot(data = blood_val, aes(x = ic, y = WID_cervical_BC_adj_ic, color = type, fill = factor(type))) +
-  geom_point(alpha=0.2,size=2) +  # Plot points
-  geom_smooth(method = "lm", se = TRUE, aes(group = type)) +
-  scale_color_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control)) +  # Add linear fit with confidence interval
-  labs(
-    y = "WID-cervical-BC index (ic adjusted)",
-    x = "Immune Cell proportion",
-    title = 'Blood (Wang; PBMCs)'
-  ) +
-  theme_minimal() +
-  theme(legend.title = element_blank()) +
-  theme(legend.position = "none") +  # Remove legend
-  theme(panel.background = element_blank()) + 
-  stat_cor(method = "pearson", show.legend = FALSE, label.x.npc='left', label.y.npc='top', size = 3) + 
-  scale_fill_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control))
-
-a3
-
-a4 <- ggplot(data = blood_val, aes(x = hepidish_Neutro, y = WID_cervical_BC_adj, color = type, fill = factor(type))) +
-  geom_point(alpha=0.2,size=2) +  # Plot points
-  geom_smooth(method = "lm", se = TRUE, aes(group = type)) +
-  scale_color_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control)) +  # Add linear fit with confidence interval
-  labs(
-    y = "WID-cervical-BC index (neutro adjusted)",
-    x = "Neutrophil proportion",
-    title = 'Blood (Wang; PBMCs)'
-  ) +
-  theme_minimal() +
-  theme(legend.title = element_blank()) +
-  theme(legend.position = "none") +  # Remove legend
-  theme(panel.background = element_blank()) + 
-  stat_cor(method = "pearson", show.legend = FALSE, label.x.npc='left', label.y.npc='top', size = 3) + 
-  scale_fill_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control))
-
-a4
-
-a5 <- ggplot(data = blood_val, aes(x = ic, y = WID_buccal_BC_adj_ic, color = type, fill = factor(type))) +
-  geom_point(alpha=0.2,size=2) +  # Plot points
-  geom_smooth(method = "lm", se = TRUE, aes(group = type)) +
-  scale_color_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control)) +  # Add linear fit with confidence interval
-  labs(
-    y = "WID-buccal-BC index (ic adjusted)",
-    x = "Immune Cell proportion",
-    title = 'Blood (Wang; PBMCs)'
-  ) +
-  theme_minimal() +
-  theme(legend.title = element_blank()) +
-  theme(legend.position = "none") +  # Remove legend
-  theme(panel.background = element_blank()) + 
-  stat_cor(method = "pearson", show.legend = FALSE, label.x.npc='left', label.y.npc='top', size = 3) + 
-  scale_fill_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control))
-
-a5
-
-a6 <- ggplot(data = blood_val, aes(x = hepidish_Neutro, y = WID_buccal_BC_adj, color = type, fill = factor(type))) +
-  geom_point(alpha=0.2,size=2) +  # Plot points
-  geom_smooth(method = "lm", se = TRUE, aes(group = type)) +
-  scale_color_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control)) +  # Add linear fit with confidence interval
-  labs(
-    y = "WID-buccal-BC index (neutro adjusted)",
-    x = "Neutrophil proportion",
-    title = 'Blood (Wang; PBMCs)'
-  ) +
-  theme_minimal() +
-  theme(legend.title = element_blank()) +
-  theme(legend.position = "none") +  # Remove legend
-  theme(panel.background = element_blank()) + 
-  stat_cor(method = "pearson", show.legend = FALSE, label.x.npc='left', label.y.npc='top', size = 3) + 
-  scale_fill_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control))
-
-a6
-
-
-layout <- "
-ABC
-DEF
-"
-
-
-pdf_width <- 8.3  # Width in inches (a4)
-pdf_height <- 6   # Height in inches (a4: 11.7)
-
-
-compiled <- a1 + a5+  a3+  a2 + a6  + a4
-
-compiled <-  compiled + plot_annotation(tag_levels = 'a') + 
-  plot_layout(design = layout)
-
-
-ggsave(file.path(here("temp"),"blood.jpg"), width = pdf_width, height = pdf_height, compiled)
-
-
-# CERVICAL VALIDATION DATA -----------------------------------------------------------------------
-
-
-
-a1 <- ggplot(data = cervical_val, aes(x = ic, y = WID_blood_BC_adj, color = type, fill = factor(type))) +
-  geom_point(alpha=0.2,size=2) +  # Plot points
-  geom_smooth(method = "lm", se = TRUE, aes(group = type)) +
-  scale_color_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control)) +  # Add linear fit with confidence interval
-  labs(
-    y = "WID-blood-BC index (ic adjusted)",
-    x = "Immune Cell proportion",
-    title = "Cervical validation set"
-  ) +
-  theme_minimal() +
-  theme(legend.title = element_blank()) +
-  theme(legend.position = "none") +  # Remove legend
-  theme(panel.background = element_blank()) + 
-  stat_cor(method = "pearson", show.legend = FALSE, label.x.npc='left', label.y.npc='top', size = 3) + 
-  scale_fill_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control))
-
-a1
-
-a2 <- ggplot(data = cervical_val, aes(x = hepidish_Neutro, y = WID_blood_BC_adj, color = type, fill = factor(type))) +
-  geom_point(alpha=0.2,size=2) +  # Plot points
-  geom_smooth(method = "lm", se = TRUE, aes(group = type)) +
-  scale_color_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control)) +  # Add linear fit with confidence interval
-  labs(
-    y = "WID-blood-BC index (neutro adjusted)",
-    x = "Neutrophil proportion",
-    title = "Cervical validation set"
-  ) +
-  theme_minimal() +
-  theme(legend.title = element_blank()) +
-  theme(legend.position = "none") +  # Remove legend
-  theme(panel.background = element_blank()) + 
-  stat_cor(method = "pearson", show.legend = FALSE, label.x.npc='left', label.y.npc='top', size = 3) + 
-  scale_fill_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control))
-
-a2
-
-
-a3 <- ggplot(data = cervical_val, aes(x = ic, y = WID_cervical_BC_adj, color = type, fill = factor(type))) +
-  geom_point(alpha=0.2,size=2) +  # Plot points
-  geom_smooth(method = "lm", se = TRUE, aes(group = type)) +
-  scale_color_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control)) +  # Add linear fit with confidence interval
-  labs(
-    y = "WID-cervical-BC index (ic adjusted)",
-    x = "Immune Cell proportion",
-    title = "Cervical validation set"
-  ) +
-  theme_minimal() +
-  theme(legend.title = element_blank()) +
-  theme(legend.position = "none") +  # Remove legend
-  theme(panel.background = element_blank()) + 
-  stat_cor(method = "pearson", show.legend = FALSE, label.x.npc='left', label.y.npc='top', size = 3) + 
-  scale_fill_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control))
-
-a3
-
-a4 <- ggplot(data = cervical_val, aes(x = hepidish_Neutro, y = WID_cervical_BC_adj_neutro, color = type, fill = factor(type))) +
-  geom_point(alpha=0.2,size=2) +  # Plot points
-  geom_smooth(method = "lm", se = TRUE, aes(group = type)) +
-  scale_color_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control)) +  # Add linear fit with confidence interval
-  labs(
-    y = "WID-cervical-BC index (neutro adjusted)",
-    x = "Neutrophil proportion",
-    title = "Cervical validation set"
-  ) +
-  theme_minimal() +
-  theme(legend.title = element_blank()) +
-  theme(legend.position = "none") +  # Remove legend
-  theme(panel.background = element_blank()) + 
-  stat_cor(method = "pearson", show.legend = FALSE, label.x.npc='left', label.y.npc='top', size = 3) + 
-  scale_fill_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control))
-
-a4
-
-a5 <- ggplot(data = cervical_val, aes(x = ic, y = WID_buccal_BC_adj, color = type, fill = factor(type))) +
-  geom_point(alpha=0.2,size=2) +  # Plot points
-  geom_smooth(method = "lm", se = TRUE, aes(group = type)) +
-  scale_color_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control)) +  # Add linear fit with confidence interval
-  labs(
-    y = "WID-buccal-BC index (ic adjusted)",
-    x = "Immune Cell proportion",
-    title = "Cervical validation set"
-  ) +
-  theme_minimal() +
-  theme(legend.title = element_blank()) +
-  theme(legend.position = "none") +  # Remove legend
-  theme(panel.background = element_blank()) + 
-  stat_cor(method = "pearson", show.legend = FALSE, label.x.npc='left', label.y.npc='top', size = 3) + 
-  scale_fill_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control))
-
-a5
-
-a6 <- ggplot(data = cervical_val, aes(x = hepidish_Neutro, y = WID_buccal_BC_adj_neutro, color = type, fill = factor(type))) +
-  geom_point(alpha=0.2,size=2) +  # Plot points
-  geom_smooth(method = "lm", se = TRUE, aes(group = type)) +
-  scale_color_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control)) +  # Add linear fit with confidence interval
-  labs(
-    y = "WID-buccal-BC index (neutro adjusted)",
-    x = "Neutrophil proportion",
-    title = "Cervical validation set"
-  ) +
-  theme_minimal() +
-  theme(legend.title = element_blank()) +
-  theme(legend.position = "none") +  # Remove legend
-  theme(panel.background = element_blank()) + 
-  stat_cor(method = "pearson", show.legend = FALSE, label.x.npc='left', label.y.npc='top', size = 3) + 
-  scale_fill_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control))
-
-a6
-
-
-layout <- "
-ABC
-DEF
-"
-
-pdf_width <- 8.3  # Width in inches (a4)
-pdf_height <- 6   # Height in inches (a4: 11.7)
-
-
-
-compiled <- a1 + a5+  a3+  a2 + a6  + a4
-
-compiled <-  compiled + plot_annotation(tag_levels = 'a') + 
-  plot_layout(design = layout)
-
-ggsave(file.path(here("temp"),"cervical.jpg"), width = pdf_width, height = pdf_height, compiled)
-
-
-
-# BUCCAL VALIDATION DATA --------------------------------------------------
-
-
-a1 <- ggplot(data = buccal_val, aes(x = ic, y = WID_blood_BC_adj, color = type, fill = factor(type))) +
-  geom_point(alpha=0.2,size=2) +  # Plot points
-  geom_smooth(method = "lm", se = TRUE, aes(group = type)) +
-  scale_color_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control)) +  # Add linear fit with confidence interval
-  labs(
-    y = "WID-blood-BC index (ic adjusted)",
-    x = "Immune Cell proportion",
-    title = "Buccal validation set"
-  ) +
-  theme_minimal() +
-  theme(legend.title = element_blank()) +
-  theme(legend.position = "none") +  # Remove legend
-  theme(panel.background = element_blank()) + 
-  stat_cor(method = "pearson", show.legend = FALSE, label.x.npc='left', label.y.npc='top', size = 3) + 
-  scale_fill_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control))
-
-a1
-
-a2 <- ggplot(data = buccal_val, aes(x = hepidish_Neutro, y = WID_blood_BC_adj, color = type, fill = factor(type))) +
-  geom_point(alpha=0.2,size=2) +  # Plot points
-  geom_smooth(method = "lm", se = TRUE, aes(group = type)) +
-  scale_color_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control)) +  # Add linear fit with confidence interval
-  labs(
-    y = "WID-blood-BC index (neutro adjusted)",
-    x = "Neutrophil proportion",
-    title = "Buccal validation set"
-  ) +
-  theme_minimal() +
-  theme(legend.title = element_blank()) +
-  theme(legend.position = "none") +  # Remove legend
-  theme(panel.background = element_blank()) + 
-  stat_cor(method = "pearson", show.legend = FALSE, label.x.npc='left', label.y.npc='top', size = 3) + 
-  scale_fill_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control))
-
-a2
-
-
-a3 <- ggplot(data = buccal_val, aes(x = ic, y = WID_cervical_BC_adj, color = type, fill = factor(type))) +
-  geom_point(alpha=0.2,size=2) +  # Plot points
-  geom_smooth(method = "lm", se = TRUE, aes(group = type)) +
-  scale_color_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control)) +  # Add linear fit with confidence interval
-  labs(
-    y = "WID-cervical-BC index (ic adjusted)",
-    x = "Immune Cell proportion",
-    title = "Buccal validation set"
-  ) +
-  theme_minimal() +
-  theme(legend.title = element_blank()) +
-  theme(legend.position = "none") +  # Remove legend
-  theme(panel.background = element_blank()) + 
-  stat_cor(method = "pearson", show.legend = FALSE, label.x.npc='left', label.y.npc='top', size = 3) + 
-  scale_fill_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control))
-
-a3
-
-a4 <- ggplot(data = buccal_val, aes(x = hepidish_Neutro, y = WID_cervical_BC_adj_neutro, color = type, fill = factor(type))) +
-  geom_point(alpha=0.2,size=2) +  # Plot points
-  geom_smooth(method = "lm", se = TRUE, aes(group = type)) +
-  scale_color_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control)) +  # Add linear fit with confidence interval
-  labs(
-    y = "WID-cervical-BC index (neutro adjusted)",
-    x = "Neutrophil proportion",
-    title = "Buccal validation set"
-  ) +
-  theme_minimal() +
-  theme(legend.title = element_blank()) +
-  theme(legend.position = "none") +  # Remove legend
-  theme(panel.background = element_blank()) + 
-  stat_cor(method = "pearson", show.legend = FALSE, label.x.npc='left', label.y.npc='top', size = 3) + 
-  scale_fill_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control))
-
-a4
-
-a5 <- ggplot(data = buccal_val, aes(x = ic, y = WID_buccal_BC_adj, color = type, fill = factor(type))) +
-  geom_point(alpha=0.2,size=2) +  # Plot points
-  geom_smooth(method = "lm", se = TRUE, aes(group = type)) +
-  scale_color_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control)) +  # Add linear fit with confidence interval
-  labs(
-    y = "WID-buccal-BC index (ic adjusted)",
-    x = "Immune Cell proportion",
-    title = "Buccal validation set"
-  ) +
-  theme_minimal() +
-  theme(legend.title = element_blank()) +
-  theme(legend.position = "none") +  # Remove legend
-  theme(panel.background = element_blank()) + 
-  stat_cor(method = "pearson", show.legend = FALSE, label.x.npc='left', label.y.npc='top', size = 3) + 
-  scale_fill_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control))
-
-a5
-
-a6 <- ggplot(data = buccal_val, aes(x = hepidish_Neutro, y = WID_buccal_BC_adj_neutro, color = type, fill = factor(type))) +
-  geom_point(alpha=0.2,size=2) +  # Plot points
-  geom_smooth(method = "lm", se = TRUE, aes(group = type)) +
-  scale_color_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control)) +  # Add linear fit with confidence interval
-  labs(
-    y = "WID-buccal-BC index (neutro adjusted)",
-    x = "Neutrophil proportion",
-    title = "Buccal validation set"
-  ) +
-  theme_minimal() +
-  theme(legend.title = element_blank()) +
-  theme(legend.position = "none") +  # Remove legend
-  theme(panel.background = element_blank()) + 
-  stat_cor(method = "pearson", show.legend = FALSE, label.x.npc='left', label.y.npc='top', size = 3) + 
-  scale_fill_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control))
-
-a6
-
-
-layout <- "
-ABC
-DEF
-"
-
-
-
-
-
-compiled <- a1 + a5+  a3+  a2 + a6  + a4
-
-compiled <-  compiled + plot_annotation(tag_levels = 'a') + 
-  plot_layout(design = layout)
-
-
-
-pdf_width <- 8.3  # Width in inches (a4)
-pdf_height <- 6   # Height in inches (a4: 11.7)
-
-
-
-ggsave(file.path(here("temp"),"buccal.jpg"), width = pdf_width, height = pdf_height, compiled)
-
-
-
-# FORECEE DATA -----------------------------------------------------------------------
-
-##AUCS
-cervical <- plot_roc_dichot(factor(blood_3c_val$type), blood_3c_val$WID_cervical_BC_adj_neutro, factor(blood_3c_val$neutro_stratification), col1 = "black", col2 = colour.blue, col3 = colour.green, title1 = "All", title2 = paste("Neutro>", round(median(blood_3c_val$hepidish_Neutro), 2), sep = ""), title3 = paste("Neutro<", round(median(blood_3c_val$hepidish_Neutro), 2), sep = ""), style = "default",
-                            direction = "<",textSize=textSize)
-
-
-
-
-buccal <- plot_roc_dichot(factor(blood_3c_val$type), blood_3c_val$WID_buccal_BC_adj_neutro, factor(blood_3c_val$neutro_stratification), col1 = "black", col2 = colour.blue, col3 = colour.green, title1 = "All", title2 = paste("Neutro>", round(median(blood_3c_val$hepidish_Neutro), 2), sep = ""), title3 = paste("Neutro<", round(median(blood_3c_val$hepidish_Neutro), 2), sep = ""), style = "default",
-                            direction = "<",textSize=textSize)
-
-
-a3 <- ggplot(data = blood_3c_val, aes(x = ic, y = WID_cervical_BC_adj, color = type, fill = factor(type))) +
-  geom_point(alpha=0.2,size=2) +  # Plot points
-  geom_smooth(method = "lm", se = TRUE, aes(group = type)) +
-  scale_color_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control)) +  # Add linear fit with confidence interval
-  labs(
-    y = "WID-cervical-BC index (ic adjusted)",
-    x = "Immune Cell proportion",
-    title = 'Blood (FORECEE)'
-  ) +
-  theme_minimal() +
-  theme(legend.title = element_blank()) +
-  theme(legend.position = "none") +  # Remove legend
-  theme(panel.background = element_blank()) + 
-  stat_cor(method = "pearson", show.legend = FALSE, label.x.npc='left', label.y.npc='top', size = 3) + 
-  scale_fill_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control))
-
-a3
-
-a4 <- ggplot(data = blood_3c_val, aes(x = hepidish_Neutro, y = WID_cervical_BC_adj_neutro, color = type, fill = factor(type))) +
-  geom_point(alpha=0.2,size=2) +  # Plot points
-  geom_smooth(method = "lm", se = TRUE, aes(group = type)) +
-  scale_color_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control)) +  # Add linear fit with confidence interval
-  labs(
-    y = "WID-cervical-BC index (neutro adjusted)",
-    x = "Neutrophil proportion",
-    title = 'Blood (FORECEE)'
-  ) +
-  theme_minimal() +
-  theme(legend.title = element_blank()) +
-  theme(legend.position = "none") +  # Remove legend
-  theme(panel.background = element_blank()) + 
-  stat_cor(method = "pearson", show.legend = FALSE, label.x.npc='left', label.y.npc='top', size = 3) + 
-  scale_fill_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control))
-
-a4
-
-a5 <- ggplot(data = blood_3c_val, aes(x = ic, y = WID_buccal_BC_adj, color = type, fill = factor(type))) +
-  geom_point(alpha=0.2,size=2) +  # Plot points
-  geom_smooth(method = "lm", se = TRUE, aes(group = type)) +
-  scale_color_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control)) +  # Add linear fit with confidence interval
-  labs(
-    y = "WID-buccal-BC index (ic adjusted)",
-    x = "Immune Cell proportion",
-    title = 'Blood (FORECEE)'
-  ) +
-  theme_minimal() +
-  theme(legend.title = element_blank()) +
-  theme(legend.position = "none") +  # Remove legend
-  theme(panel.background = element_blank()) + 
-  stat_cor(method = "pearson", show.legend = FALSE, label.x.npc='left', label.y.npc='top', size = 3) + 
-  scale_fill_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control))
-
-a5
-
-a6 <- ggplot(data = blood_3c_val, aes(x = hepidish_Neutro, y = WID_buccal_BC_adj_neutro, color = type, fill = factor(type))) +
-  geom_point(alpha=0.2,size=2) +  # Plot points
-  geom_smooth(method = "lm", se = TRUE, aes(group = type)) +
-  scale_color_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control)) +  # Add linear fit with confidence interval
-  labs(
-    y = "WID-buccal-BC index (neutro adjusted)",
-    x = "Neutrophil proportion",
-    title = 'Blood (FORECEE)'
-  ) +
-  theme_minimal() +
-  theme(legend.title = element_blank()) +
-  theme(legend.position = "none") +  # Remove legend
-  theme(panel.background = element_blank()) + 
-  stat_cor(method = "pearson", show.legend = FALSE, label.x.npc='left', label.y.npc='top', size = 3) + 
-  scale_fill_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control))
-
-a6
-
-
-layout <- "
-AB
-CD
-EF
-"
-
-
-pdf_width <- 8.3  # Width in inches (a4)
-pdf_height <- 11  # Height in inches (a4: 11.7)
-
-
-compiled <-  a5+  a3+   a6  + a4 + buccal + cervical
-
-compiled <-  compiled + plot_annotation(tag_levels = 'a') + 
-  plot_layout(design = layout)
-
-
-ggsave(file.path(here("temp"),"blood_4c.jpg"), width = pdf_width, height = pdf_height, compiled)
-
-
-```
-
-
-## a) WID-buccal in cervical samples
-
-```{r}
-xx <- ggplot(cervical_val,
-             aes(x = factor(type), y = WID_buccal_BC_adj)) +
-  geom_boxplot(aes(fill = type),
-               alpha = 0.2) +
-  ggbeeswarm::geom_quasirandom(aes(colour = type),
-                               alpha = 0.5, size = 0.5) +
-  scale_color_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control)) +  # Add linear fit with confidence interval
-  labs(
-    x = '',
-    y = "WID-buccal-BC index (adjusted)"
-  ) +
-  theme_minimal() +
-  theme(legend.title = element_blank()) +
-  theme(legend.position = "none",axis.text.x = element_text(angle = 45, hjust = 1)) +  # Remove legend
-  theme(panel.background = element_blank()) + 
-  ggpubr::stat_compare_means(comparisons = list(c('Control', 'BC case')), label = 'p.signif',vjust = 0.3) +
-  scale_fill_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control))
-
-xx
-```
-
-
-## b) WID-cervical in buccal samples
-
-```{r}
-xx <- ggplot(buccal_val,
-             aes(x = factor(type), y = WID_cervical_BC_adj)) +
-  geom_boxplot(aes(fill = type),
-               alpha = 0.2) +
-  ggbeeswarm::geom_quasirandom(aes(colour = type),
-                               alpha = 0.5, size = 0.5) +
-  scale_color_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control)) +  # Add linear fit with confidence interval
-  labs(
-    x = '',
-    y = "WID-buccal-BC index (adjusted)"
-  ) +
-  theme_minimal() +
-  theme(legend.title = element_blank()) +
-  theme(legend.position = "none",axis.text.x = element_text(angle = 45, hjust = 1)) +  # Remove legend
-  theme(panel.background = element_blank()) + 
-  ggpubr::stat_compare_means(comparisons = list(c('Control', 'BC case')), label = 'p.signif',vjust = 0.3) +
-  scale_fill_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control))
-
-xx
-```
-
-## c) WID-buccal in blood
-
-```{r}
-xx <- ggplot(blood_val,
-             aes(x = factor(type), y = WID_buccal_BC_adj)) +
-  geom_boxplot(aes(fill = type),
-               alpha = 0.2) +
-  ggbeeswarm::geom_quasirandom(aes(colour = type),
-                               alpha = 0.5, size = 0.5) +
-  scale_color_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control)) +  # Add linear fit with confidence interval
-  labs(
-    x = '',
-    y = "WID-buccal-BC index (adjusted)"
-  ) +
-  theme_minimal() +
-  theme(legend.title = element_blank()) +
-  theme(legend.position = "none",axis.text.x = element_text(angle = 45, hjust = 1)) +  # Remove legend
-  theme(panel.background = element_blank()) + 
-  ggpubr::stat_compare_means(comparisons = list(c('Control', 'BC case')), label = 'p.signif',vjust = 0.3) +
-  scale_fill_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control))
-
-xx
-```
-
-## c) WID-cervical in blood
-
-```{r}
-xx <- ggplot(blood_val,
-             aes(x = factor(type), y = WID_cervical_BC_adj)) +
-  geom_boxplot(aes(fill = type),
-               alpha = 0.2) +
-  ggbeeswarm::geom_quasirandom(aes(colour = type),
-                               alpha = 0.5, size = 0.5) +
-  scale_color_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control)) +  # Add linear fit with confidence interval
-  labs(
-    x = '',
-    y = "WID-cervical-BC index (adjusted)"
-  ) +
-  theme_minimal() +
-  theme(legend.title = element_blank()) +
-  theme(legend.position = "none",axis.text.x = element_text(angle = 45, hjust = 1)) +  # Remove legend
-  theme(panel.background = element_blank()) + 
-  ggpubr::stat_compare_means(comparisons = list(c('Control', 'BC case')), label = 'p.signif',vjust = 0.3) +
-  scale_fill_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control))
-
-xx
-```
-
-## x) WID-cervical in blood versus ic
-
-```{r}
-a2 <- ggplot(data = blood_val, aes(x = ic, y = WID_cervical_BC_adj_ic, color = type, fill = factor(type))) +
-  geom_point(alpha=0.2,size=2) +  # Plot points
-  geom_smooth(method = "lm", se = TRUE, aes(group = type)) +
-  scale_color_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control)) +  # Add linear fit with confidence interval
-  labs(
-    y = "WID-cervical-BC index",
-    x = "Immune Cell proportion"
-  ) +
-  theme_minimal() +
-  theme(legend.title = element_blank()) +
-  theme(legend.position = "none") +  # Remove legend
-  theme(panel.background = element_blank()) + 
-  stat_cor(method = "pearson", show.legend = FALSE, label.x.npc='left', label.y.npc='top', size = 3) + 
-  scale_fill_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control))
-
-a2
-```
-## x) AUC: WID-cervical in blood, ic adjusted (!)
-
-```{r}
-# xx <- plot_roc_dichot(factor(blood_val$type), blood_val$WID_cervical_BC_adj_ic, factor(blood_val$ic_stratification), col1 = "black", col2 = colour.blue, col3 = colour.green, title1 = "All", title2 = paste("IC>", round(median(blood_val$ic), 2), sep = ""), title3 = paste("IC<", round(median(blood_val$ic), 2), sep = ""), style = "default",
-#                             direction = "<",textSize=textSize)
-# 
-# xx
-```
-
-
-
-
-
-## x) AUC WID-blood in cervical: stratified by ic
-
-
-## x) AUC: WID-blood in cervical
-
-```{r}
-xx <- plot_roc_dichot(factor(cervical_val$type), cervical_val$WID_blood_BC_adj, factor(cervical_val$ic_stratification), col1 = "black", col2 = colour.blue, col3 = colour.green, title1 = "All", title2 = paste("IC>", round(median(cervical_val$ic), 2), sep = ""), title3 = paste("IC<", round(median(cervical_val$ic), 2), sep = ""), style = "default",
-                            direction = "<",textSize=textSize)
-
-xx
-
-# Statistics
-# D = -0.99327, df = 182, p-value = 0.3219
-roc.ic_low <- roc(cervical_val$type[cervical_val$ic_stratification==T], cervical_val$WID_blood_BC_adj[cervical_val$ic_stratification==T], direction = "<")
-roc.ic_high <- roc(cervical_val$type[cervical_val$ic_stratification==F], cervical_val$WID_blood_BC_adj[cervical_val$ic_stratification==F], direction = "<")
-roc.test(roc.ic_low,roc.ic_high, are.paired=F)
-```
-
-
-
-## c) WID-blood in buccal
-
-```{r}
-xx <- ggplot(buccal_val,
-             aes(x = factor(type), y = WID_blood_BC_adj)) +
-  geom_boxplot(aes(fill = type),
-               alpha = 0.2) +
-  ggbeeswarm::geom_quasirandom(aes(colour = type),
-                               alpha = 0.5, size = 0.5) +
-  scale_color_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control)) +  # Add linear fit with confidence interval
-  labs(
-    x = '',
-    y = "WID-blood-BC index (adjusted)"
-  ) +
-  theme_minimal() +
-  theme(legend.title = element_blank()) +
-  theme(legend.position = "none",axis.text.x = element_text(angle = 45, hjust = 1)) +  # Remove legend
-  theme(panel.background = element_blank()) + 
-  ggpubr::stat_compare_means(comparisons = list(c('Control', 'BC case')), label = 'p.signif',vjust = 0.3) +
-  scale_fill_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control))
-
-xx
-```
-
-## c) AUC: WID-blood in buccal
-
-```{r}
-xx <- plot_roc_dichot(factor(buccal_val$type), buccal_val$WID_blood_BC_adj, factor(buccal_val$ic_stratification), col1 = "black", col2 = colour.blue, col3 = colour.green, title1 = "All", title2 = paste("IC>", round(median(buccal_val$ic), 2), sep = ""), title3 = paste("IC<", round(median(buccal_val$ic), 2), sep = ""), style = "default",
-                            direction = "<",textSize=textSize)
-
-xx
-
-# Statistics
-# D = -1.3734, df = 184.47, p-value = 0.1713
-roc.ic_low <- roc(buccal_val$type[buccal_val$ic_stratification==T], buccal_val$WID_blood_BC_adj[buccal_val$ic_stratification==T], direction = "<")
-roc.ic_high <- roc(buccal_val$type[buccal_val$ic_stratification==F], buccal_val$WID_blood_BC_adj[buccal_val$ic_stratification==F], direction = "<")
-roc.test(roc.ic_low,roc.ic_high, are.paired=F)
-```
-
-# Hexbins of DMPs, unadjusted
-
-
-## d) cervical + buccal overlapping significant CpGs in epithelial
-
-```{r}
-d1 <- dmps |> 
-  dplyr::filter(type.y < 0.05 & type.x < 0.05) |> 
-  ggplot(aes(x = db_epithelial.x,
-             y = db_epithelial.y)) +
-  geom_hex(bins = 100) +
-  labs(x = 'Buccal Δβ',
-       y = 'Cervical Δβ')  +
-  scale_fill_viridis_c(name = "Number of CpGs", option = "plasma") +
-  ggpubr::stat_cor() +
-  theme_minimal() +  # Add this line to remove the grey background
- theme(legend.position = "top", legend.box = "horizontal")  # Add these lines to place legend above the plot
-
-d1
-```
-
-
-## e) cervical + buccal overlapping significant CpGs in immune
-
-```{r}
-e1 <- dmps |> 
-  dplyr::filter(type.y < 0.05 & type.x < 0.05) |> 
-  ggplot(aes(x = db_immune.x,
-             y = db_immune.y)) +
-  geom_hex(bins = 100) +
-  labs(x = 'Buccal Δβ',
-       y = 'Cervical Δβ')  +
-  scale_fill_viridis_c(name = "Number of CpGs", option = "plasma") +
-  ggpubr::stat_cor() +
-  theme_minimal() +  # Add this line to remove the grey background
-  theme(legend.position = "top", legend.box = "horizontal")  # Add these lines to place legend above the plot
-
-print(e1)
-
-```
-
-# BMI in discovery and validation sets
-
-## a) buccal
-
-```{r}
-
-subset_data <- subset(data, set %in% c("discovery_buccal", "validation_buccal"))
-subset_data$type <- factor(subset_data$type, levels=c("Control","BC case"))
-
-s1a <- ggplot(data=subset_data, aes(x = type,
-             y = BMI,
-            fill = type)) +
-  geom_boxplot(aes(fill = type),
-               alpha = 0.2) +
-  ggbeeswarm::geom_quasirandom(aes(colour = type),
-                               alpha = 0.5, size=0.5) +
-  scale_color_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control)) +
-  theme_minimal() +
-  theme(legend.title = element_blank(),
-        legend.position = 'top',
-        axis.text.x = element_blank(),
-        axis.title.y = element_markdown()) +
-  scale_fill_manual(values = c(colour.Control, colour.Breast)) +
-  labs(x = "", y = "Body mass index  (kg/m<sup>2</sup>)")  + 
-  ggpubr::stat_compare_means(comparisons = list(c("BC case","Control")),
-                             label = 'p.signif', label.y = c(55), vjust = +0.1,textsize=2, hide.ns = TRUE) +
-  facet_wrap(~set,labeller = as_labeller(c(`discovery_buccal` = "Discovery Set", `validation_buccal` = "External Validation Set"))) 
-
-s1a
-
-
-```
-
-## a) cervical
-
-```{r}
-
-subset_data <- subset(data, set %in% c("discovery_cervical", "validation_cervical"))
-subset_data$type <- factor(subset_data$type, levels=c("Control","BC case"))
-
-s2a <- ggplot(data=subset_data, aes(x = type,
-             y = BMI,
-            fill = type)) +
-  geom_boxplot(aes(fill = type),
-               alpha = 0.2) +
-  ggbeeswarm::geom_quasirandom(aes(colour = type),
-                               alpha = 0.5, size=0.5) +
-  scale_color_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control)) +
-  theme_minimal() +
-  theme(legend.title = element_blank(),
-        legend.position = 'top',
-        axis.text.x = element_blank(),
-        axis.title.y = element_markdown()) +
-  scale_fill_manual(values = c(colour.Control, colour.Breast)) +
-  labs(x = "", y = "Body mass index  (kg/m<sup>2</sup>)")  + 
-  ggpubr::stat_compare_means(comparisons = list(c("BC case","Control")),
-                             label = 'p.signif', label.y = c(55), vjust = +0.1,textsize=2, hide.ns = TRUE) +
-  facet_wrap(~set,labeller = as_labeller(c(`discovery_cervical` = "Discovery Set", `validation_cervical` = "External Validation Set"))) 
-
-s2a
-
-
-```
-
-## a) blood
-
-```{r}
-
-subset_data <- subset(data, set %in% c("discovery_blood"))
-subset_data$type <- factor(subset_data$type, levels=c("Control","BC case"))
-
-s3a <- ggplot(data=subset_data, aes(x = type,
-             y = BMI,
-            fill = type)) +
-  geom_boxplot(aes(fill = type),
-               alpha = 0.2) +
-  ggbeeswarm::geom_quasirandom(aes(colour = type),
-                               alpha = 0.5, size=0.5) +
-  scale_color_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control)) +
-  theme_minimal() +
-  theme(legend.title = element_blank(),
-        legend.position = 'top',
-        axis.text.x = element_blank(),
-        axis.title.y = element_markdown()) +
-  scale_fill_manual(values = c(colour.Control, colour.Breast)) +
-  labs(x = "", y = "Body mass index  (kg/m<sup>2</sup>)")  + 
-  ggpubr::stat_compare_means(comparisons = list(c("BC case","Control")),
-                             label = 'p.signif', label.y = c(45), vjust = +0.5,textsize=2, hide.ns = TRUE) 
-  
-
-s3a
-
-
-```
-
-# Age at Menarche
-
-```{r}
-temp <- buccal_val[which(!is.na(buccal_val$age_at_menarche)),]
-
-temp$menarche_stratification <- temp$age_at_menarche <= median(temp$age_at_menarche)
-
-
-ax <- ggplot(data = temp, aes(x = age_at_menarche, y = WID_buccal_BC_adj, color = type, fill = factor(type))) +
-  geom_point(alpha=0.2,size=2) +  # Plot points
-  geom_smooth(method = "lm", se = TRUE, aes(group = type)) +
-  scale_color_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control)) +  # Add linear fit with confidence interval
-  labs(
-    y = "WID-buccal-BC index (adj)",
-    x = "Age at Menarche"
-  ) +
-  theme_minimal() +
-  theme(legend.title = element_blank()) +
-  theme(legend.position = "bottom") +  # Remove legend
-  theme(panel.background = element_blank()) + 
-  stat_cor(method = "pearson", show.legend = FALSE, label.x.npc='left', label.y.npc='top', size = 3) + 
-
-  scale_fill_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control)) +  
-  guides(color = guide_colorbar(title = "Horsepower"),
-    shape = guide_legend(title = "Weight"), size = guide_legend(title = "Gear")
-  )
-
-ax
-
-
-
-
-
-temp <- cervical_val[which(!is.na(cervical_val$age_at_menarche)),]
-
-temp$menarche_stratification <- temp$age_at_menarche <= median(temp$age_at_menarche)
-
-
-cx <- ggplot(data = temp, aes(x = age_at_menarche, y = WID_cervical_BC_adj, color = type, fill = factor(type))) +
-  geom_point(alpha=0.2,size=2) +  # Plot points
-  geom_smooth(method = "lm", se = TRUE, aes(group = type)) +
-  scale_color_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control)) +  # Add linear fit with confidence interval
-  labs(
-    y = "WID-cervical-BC index (adj)",
-    x = "Age at Menarche"
-  ) +
-  theme_minimal() +
-  theme(legend.title = element_blank()) +
-  theme(legend.position = "none") +  # Remove legend
-  theme(panel.background = element_blank()) + 
-  stat_cor(method = "pearson", show.legend = FALSE, label.x.npc='left', label.y.npc='top', size = 3) + 
-  scale_fill_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control))
-
-cx
-
-dx <- plot_roc_dichot(factor(temp$type), temp$WID_cervical_BC_adj, factor(temp$menarche_stratification), col1 = "black", col2 = colour.blue, col3 = colour.green, title1 = "All", title2 = paste("Menarche>", round(median(temp$age_at_menarche), 2), sep = ""), title3 = paste("Menarche<", round(median(temp$age_at_menarche), 2), sep = ""), style = "default",
-                      direction = "<",textSize=textSize)
-
-dx
-
-# Statistics
-# D = -1.0473, df = 97.068, p-value = 0.2976
-roc.menarche_low <- roc(temp$type[temp$menarche_stratification==T], temp$WID_cervical_BC_adj[temp$menarche_stratification==T], direction = "<")
-roc.menarche_high <- roc(temp$type[temp$menarche_stratification==F], temp$WID_cervical_BC_adj[temp$menarche_stratification==F], direction = "<")
-roc.test(roc.menarche_low,roc.menarche_high, are.paired=F)
-
-layout <- "
-AB
-AB
-CD
-CD
-EE
-"
-
-
-pdf_width <- 8.3  # Width in inches (a4)
-pdf_height <- 6   # Height in inches (a4: 11.7)
-
-
-compiled <- ax + bx + cx + dx + guide_area()
-  
-compiled <-  compiled + plot_annotation(tag_levels = 'a') + 
-  plot_layout(design = layout, guides='collect')
-
-ggsave(file.path(outPath,"ED11.pdf"), width = pdf_width, height = pdf_height, compiled)
-ggsave(file.path(jpgPath,"ED11.jpg"), width = pdf_width, height = pdf_height, compiled)
-
-
-
-```
-
-# Numbers for manuscript
-
-```{r}
-table_data <- table(data$subset, data$type, data$set)
-print(table_data)
-```
-
-# PRBS boxplot
-
-```{r Use existing variable mean_prbs, perform t-test between case and control}
-
-cervical_val$set <- 'Cervical'
-buccal_val$set <- 'Buccal'
-
-merged_df <-full_join(cervical_val, buccal_val)
-
-merged_df$type <- factor(merged_df$type, levels=c("Control","BC case"))
-
-
-S10 <- ggplot(data=merged_df, aes(x = type,
-             y = mean_prbs,
-            fill = type)) +
-  geom_boxplot(aes(fill = type),
-               alpha = 0.2) +
-  ggbeeswarm::geom_quasirandom(aes(colour = type),
-                               alpha = 0.5, size=0.5) +
-  scale_color_manual(values = c("BC case" = colour.Breast, "Control" = colour.Control)) +
-  theme_minimal() +
-  theme(legend.title = element_blank(),
-        legend.position = 'top',
-        axis.text.x = element_blank(),
-        axis.title.y = element_markdown()) +
-  scale_fill_manual(values = c(colour.Control, colour.Breast)) +
-  labs(x = "", y = "Mean methylation at PRBS")  + 
-  ggpubr::stat_compare_means(comparisons = list(c("BC case","Control")),
-                             label = 'p.signif', vjust = +0.1,textsize=2) +
-  facet_wrap(~set) 
-
-S10
-
-ggsave(file.path(outPath,"S10.pdf"), width = 3, height = 3.5, S10)
-ggsave(file.path(jpgPath,"S10.jpg"), width = 3, height = 3.5, S10)
-
-```
-
-
-# Patchwork test
-
-```{r}
-
-layout <- "
-ABC
-DEF
-GHI
-JKL
-"
-
-
-pdf_width <- 8.3  # Width in inches (a4)
-pdf_height <- 11.7   # Height in inches (a4: 11.7)
-
-
-compiled <- s8a + s8b + s8c + s8d + s8e + s8f  + s9a + s9b + s9c + s9d + s9e + s9f 
-  
-compiled <-  compiled + plot_annotation(tag_levels = 'a') + 
-  plot_layout(design = layout)
-
-ggsave(file.path(outPath,"ED10.pdf"), width = pdf_width, height = pdf_height, compiled)
-ggsave(file.path(jpgPath,"ED10.jpg"), width = pdf_width, height = pdf_height, compiled)
-
-
-
-# Use a custom tag sequence (mixed with a standard one)
-p1 / ((p2 | p3) + plot_layout(tag_level = 'new')) +
-  plot_annotation(tag_levels = list(c('&', '%'), '1'))
-```
-

@@ -3,10 +3,12 @@ title: "DMR visualisation"
 author: "Chiara Herzog"
 date: "2023-11-17"
 output: html_document
+editor_options: 
+  chunk_output_type: console
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = F, message = F, warning = F)
+knitr::opts_chunk$set(echo = F, message = F, warning = F, eval = F)
 
 # Install libraries if not available (+ load)
 for (i in c('dplyr', 'ggplot2', 'here', 'fs', 'tibble', 'stringr', 'tidyverse', 'patchwork', 'devtools')){
@@ -36,8 +38,7 @@ here::i_am("1-ewas/1-buccal/3-dmr-visualisation.Rmd")
 ```
 
 
-# Circos plot overlaps
-
+# Circos plot of DMR overlaps
 
 ```{r}
 buccal <- readRDS(here("1-ewas", "1-buccal", "2-output", "dmr_list.Rds")) |> 
@@ -51,12 +52,9 @@ cervical <- readRDS(here("1-ewas", "2-cervical", "2-output", "dmr_list.Rds")) |>
 circos.initializeWithIdeogram(plotType = c("ideogram", "labels"),chromosome.index = paste0("chr", 1:22))
 circos.genomicDensity(buccal, col = c("#FF000080"), track.height = 0.3)
 circos.genomicDensity(cervical, col = c("#0000FF80"), track.height = 0.3)
-
-
 ```
 
-Buccal (red), cervical (blue) - some peaks seem to overlap
-
+* Buccal (red), cervical (blue)
 
 ```{r}
 load(here("1-ewas", "1-buccal", "2-output", "ranges.Rdata"))
@@ -72,21 +70,15 @@ tmp <- as.data.frame(overlaps)
 overlaps2 <- subsetByOverlaps(cervicalRanges, buccalRanges)
 tmp2 <- as.data.frame(overlaps2)
 
-
-
-
 ggplot() +
   geom_point(aes(x = as.numeric(tmp$meandiff), y = as.numeric(tmp2$meandiff))) +
   geom_smooth(aes(x = as.numeric(tmp$meandiff), y = as.numeric(tmp2$meandiff)), method = "lm", se = TRUE) +
   labs(x = "Buccal samples", y = "Cervical samples") +
   theme_minimal()
-
 ```
 
-* Many of the DMRs go in opposing directions, even though the were identified using the same group of individuals!
-* This also explains why the cervical and buccal index likely go in opposite directions
-* We could do the same check looking at DMPs (i.e. checking direction of p-adjusted type-coef in delta-beta in cervical and buccal)
-
+* Many of the DMRs go in opposing directions, even though the were identified using the same group of individuals.
+* This also explains why the cervical and buccal index go in opposite directions
 
 ```{r}
 buccal <- readRDS(here("1-ewas", "1-buccal", "delta-beta.Rds")) |> 
@@ -138,7 +130,10 @@ dmps |>
 
 ```
 
-# Delta-beta in epithelial cells of DMPs
+
+# DMPs
+
+## Delta-beta DMPs (epithelial): overlaps
 
 ```{r}
 dmps |> 
@@ -175,7 +170,7 @@ dmps |>
   ggpubr::stat_cor()
 ```
 
-# Delta-beta in immune cells of DMPs
+## Delta-beta DMPs (immune)
 
 ```{r}
 dmps |> 
@@ -217,9 +212,7 @@ dmps |>
 * ~ Equal parts positive and negative correlation for significant CpGs
 * Could check same also for delta-beta (significant CpGs only)
 
-
-
-## DMPs
+## Circos plot
 
 ```{r}
 # prep db

@@ -6,7 +6,7 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = F, message = F, warning = F)
+knitr::opts_chunk$set(echo = F, message = F, warning = F, eval = F)
 
 # Install libraries if not available (+ load)
 for (i in c('dplyr', 'ggplot2', 'here', 'fs', 'tibble')){
@@ -94,7 +94,6 @@ data |>
   ggpubr::stat_compare_means(ref.group = 'Control',
                              label = 'p.signif')
 ```
-
 
 ## Prepare code for EWAS
 

@@ -1,4 +1,5 @@
-plotDMRs <- function(ranges, beta, pheno, type = "cervical", n = 100){
+plotDMRs <- function(ranges, beta, pheno, type = "cervical", n = 100,
+                     array = 'EPIC'){
   
   if(length(find.package('MetBrewer', quiet = T)) == 0){
     cat('Installing MetBrewer')
@@ -7,8 +8,13 @@ plotDMRs <- function(ranges, beta, pheno, type = "cervical", n = 100){
   
   
   # Load in data + cols
-  data <- getAnnotation(IlluminaHumanMethylationEPICanno.ilm10b4.hg19,
+  if(array == '450k'){
+  data <- getAnnotation(IlluminaHumanMethylation450kanno.ilmn12.hg19,
                         lociNames = rownames(beta))
+  } else {
+    data <- getAnnotation(IlluminaHumanMethylationEPICanno.ilm10b4.hg19,
+                          lociNames = rownames(beta))
+  }
   cols <- MetBrewer::met.brewer("Hiroshige", type = "continuous")
   
   plots <- length(1:n)
@@ -25,74 +31,79 @@ plotDMRs <- function(ranges, beta, pheno, type = "cervical", n = 100){
     c <- data[data$chr==chr & data$pos >= min & data$pos <= max,]
     
     # Data
-    tmp <- beta[match(rownames(c), rownames(beta)),]
-    tmp_pheno <- cbind(pheno, t(tmp))
-    tmp_pheno <- tmp_pheno |>
-      tidyr::pivot_longer(rownames(tmp), names_to = "cpg", values_to = "beta") |> 
-      dplyr::mutate(type2 = dplyr::case_when(type == "Control" ~ "Control",
-                               type != "Control" ~ "Case")) |> 
-      dplyr::mutate(type2 = factor(type2, levels = c("Control", "Case")))
+    tmp <- beta[match(rownames(c), rownames(beta)),,drop=F]
     
-    ind <- match(tmp_pheno$cpg, rownames(c))
-    tmp_pheno$pos <- c$pos[ind]
-    t <- tmp_pheno |> 
-      dplyr::group_by(type2, cpg) |> 
-      dplyr::reframe(mean = mean(beta),
-                       pos = pos) |> 
-      dplyr::distinct() 
-    
-    # Plot linked ranges
-    (a <- t |>
-        ggplot(aes(x = pos,
-                   y = mean,
-                   colour = type2)) +
-        geom_point() +
-        geom_line() +
-        ggtitle(paste0(chr, ":", min, "-", max, ",\n",
-                       ranges$overlapping.genes[i], ", p=", signif(ranges[i]$Stouffer,2))) +
-        theme(legend.position="top") +
-        ylim(0, 1) +
-        scale_colour_manual(values = cols[c(7, 3)],
-                            name = "") +
-        xlab(paste0(unique(c$chr))) +
-        ylab(paste0("mean beta at ", nrow(c), " CpGs")))
-    
-    
-    if(type %in% c("buccal", "cervical")){
-      tmpsum <- apply(tmp, 2, mean)
-      pheno_tmp2 <- cbind(pheno, 
-                          mean = tmpsum)
-      
-      b <- pheno_tmp2 |> 
-        ggplot(aes(x = ic,
-                   y = mean,
-                   colour = type)) +
-        geom_point(size = 0.8) +
-        geom_smooth(method = "lm") +
-        scale_colour_manual(values = c(cols[c(7,3)])) +
-        theme(legend.position = "top") +
-        ylab(paste0("mean beta at ", nrow(c), " CpGs"))
-      
-      plot <- a | b
-      print(plot)
+    if(nrow(tmp) == 0){
+      NULL
     } else {
-      tmpsum <- apply(tmp, 2, mean)
-      pheno_tmp2 <- cbind(pheno, 
-                          mean = tmpsum)
+      tmp_pheno <- cbind(pheno, t(tmp))
+      tmp_pheno <- tmp_pheno |>
+        tidyr::pivot_longer(rownames(tmp), names_to = "cpg", values_to = "beta") |> 
+        dplyr::mutate(type2 = dplyr::case_when(type == "Control" ~ "Control",
+                                 type != "Control" ~ "Case")) |> 
+        dplyr::mutate(type2 = factor(type2, levels = c("Control", "Case")))
       
-      c <- pheno_tmp2 |> 
-        ggplot(aes(x = ic,
-                   y = mean,
-                   colour = type)) +
-        geom_point(size = 0.8) +
-        geom_smooth(method = "lm") +
-        scale_colour_manual(values = c(cols[c(7,3)])) +
-        theme(legend.position = "top") +
-        ylab(paste0("mean beta at ", nrow(c), " CpGs")) +
-        xlab("neutrophil fraction")
+      ind <- match(tmp_pheno$cpg, rownames(c))
+      tmp_pheno$pos <- c$pos[ind]
+      t <- tmp_pheno |> 
+        dplyr::group_by(type2, cpg) |> 
+        dplyr::reframe(mean = mean(beta),
+                         pos = pos) |> 
+        dplyr::distinct() 
       
-      plot <- a | b 
-      print(plot)
+      # Plot linked ranges
+      (a <- t |>
+          ggplot(aes(x = pos,
+                     y = mean,
+                     colour = type2)) +
+          geom_point() +
+          geom_line() +
+          ggtitle(paste0(chr, ":", min, "-", max, ",\n",
+                         ranges$overlapping.genes[i], ", p=", signif(ranges[i]$Stouffer,2))) +
+          theme(legend.position="top") +
+          ylim(0, 1) +
+          scale_colour_manual(values = cols[c(7, 3)],
+                              name = "") +
+          xlab(paste0(unique(c$chr))) +
+          ylab(paste0("mean beta at ", nrow(c), " CpGs")))
+      
+      
+      if(type %in% c("buccal", "cervical")){
+        tmpsum <- apply(tmp, 2, mean)
+        pheno_tmp2 <- cbind(pheno, 
+                            mean = tmpsum)
+        
+        b <- pheno_tmp2 |> 
+          ggplot(aes(x = ic,
+                     y = mean,
+                     colour = type)) +
+          geom_point(size = 0.8) +
+          geom_smooth(method = "lm") +
+          scale_colour_manual(values = c(cols[c(7,3)])) +
+          theme(legend.position = "top") +
+          ylab(paste0("mean beta at ", nrow(c), " CpGs"))
+        
+        plot <- a | b
+        print(plot)
+      } else {
+        tmpsum <- apply(tmp, 2, mean)
+        pheno_tmp2 <- cbind(pheno, 
+                            mean = tmpsum)
+        
+        c <- pheno_tmp2 |> 
+          ggplot(aes(x = ic,
+                     y = mean,
+                     colour = type)) +
+          geom_point(size = 0.8) +
+          geom_smooth(method = "lm") +
+          scale_colour_manual(values = c(cols[c(7,3)])) +
+          theme(legend.position = "top") +
+          ylab(paste0("mean beta at ", nrow(c), " CpGs")) +
+          xlab("neutrophil fraction")
+        
+        plot <- a | b 
+        print(plot)
+      }
     }
   }
-}
+} 

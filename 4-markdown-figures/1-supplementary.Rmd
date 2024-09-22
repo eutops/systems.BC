@@ -1,0 +1,198 @@
+---
+title: ""
+author: ""
+date: ""
+link-citations: true
+output:
+  pdf_document:
+    toc: false
+    latex_engine: xelatex
+header-includes:
+  \usepackage{fontspec}
+  \usepackage[utf8]{inputenc}
+  \setmainfont{Helvetica}
+  \usepackage{pdfpages}
+  \usepackage{graphicx}
+  \newfontfamily\boldf{Helvetica Bold}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = F)
+```
+
+
+## Supplementary Information for {.unlisted .unnumbered}
+
+# Systems epigenetic approach towards non-invasive breast cancer detection {.unlisted .unnumbered}
+
+Chiara M. S. Herzog, Bente Theeuwes, Allison Jones, Iona Evans, Line Bjørge, Michal Zikan, David Cibula, Nadia Harbeck, Nicoletta Colombo, Nora Pashayan, Martin Widschwendter
+
+\tableofcontents
+
+\newcommand\invisiblesection[1]{%
+  \refstepcounter{section}%
+  \addcontentsline{toc}{section}{\protect\numberline{\thesection}#1}%
+  \sectionmark{#1}}
+
+\newpage
+
+\section{Supplementary Tables}
+
+\invisiblesection{Supplementary Table 1. Breast cancer EWAS analysis results in buccal samples.}
+\textbf{Supplementary Table 1. Breast cancer EWAS analysis results in buccal samples.}
+
+Statistical test results are based on linear models and estimation of delta-beta values (see methods). Provided as .csv file at 10.5281/zenodo.11397663.
+
+\invisiblesection{Supplementary Table 2. Breast cancer EWAS analysis results in cervical samples.}
+\textbf{Supplementary Table 2. Breast cancer EWAS analysis results in cervical samples.}
+
+Statistical test results are based on linear models and estimation of delta-beta values (see methods). Provided as .csv file at 10.5281/zenodo.11397663.
+
+\invisiblesection{Supplementary Table 3. Breast cancer EWAS analysis results in blood samples.}
+\textbf{Supplementary Table 3. Breast cancer EWAS analysis results in blood samples.}
+
+Statistical test results are based on linear models and estimation of delta-beta values (see methods). Provided as .csv file at 10.5281/zenodo.11397663.
+
+\invisiblesection{Supplementary Table 4. Differentially methylated regions (DMRs) significantly associated with breast cancer in both buccal and cervical samples.}
+\textbf{Supplementary Table 6. Differentially methylated regions (DMRs) significantly associated with breast cancer in both buccal and cervical samples.}
+
+Provided as .csv file.
+
+\newpage
+
+\invisiblesection{Supplementary Table 5. BRCA1/2 mutation carrier dataset overview.}
+
+\textbf{Supplementary Table 5. BRCA1/2 mutation carrier dataset overview.}
+
+\begin{center}
+\includegraphics[trim=1cm 0cm 1cm 0, clip,width=0.9\textwidth]{./pdf/ST1.pdf}
+\end{center}
+
+\newpage
+
+
+\invisiblesection{Supplementary Table 6. Breast tissue DNA methylation dataset numbers and characteristics.}
+
+\textbf{Supplementary Table 6. Breast tissue DNA methylation dataset numbers and characteristics.}
+
+\begin{center}
+\includegraphics[trim=1cm 0cm 1cm 0, clip,width=0.9\textwidth]{./pdf/ST2.pdf}
+\end{center}
+
+\newpage
+
+\section{Supplementary Figures}
+
+
+\invisiblesection{Supplementary Figure 1. Comparison of cell type proportion in breast cancer cases and controls in the discovery and validation sets.}
+
+\begin{center}
+\includegraphics[trim=0cm 0cm 0cm 0, clip,width=0.9\textwidth]{./pdf/ED3.pdf}
+\end{center}
+
+\textbf{Supplementary Figure 1. Comparison of cell type proportion in breast cancer cases and controls in the discovery and validation sets. a} Inferred immune cell fraction in breast cancer cases and controls in the buccal discovery set versus the buccal validation set. \textbf{b} Inferred immune cell fraction in breast cancer cases and controls in the cervical discovery set versus the cervical validation set. \textbf{c} Inferred neutrophil fraction in breast cancer cases and controls in the blood discovery set versus GSE237036. d Distribution of cell type proportions in buccal samples of the discovery set (left) and validation set (right) inferred using the HEpiDISH algorithm. \textbf{e} Distribution of cell type proportions in cervical samples of the discovery set (left) and validation Set (right) inferred using the HEpiDISH algorithm. \textbf{f} Distribution of cell type proportions in blood samples of the discovery Set (left) and GSE237036 (right) inferred using the HEpiDISH algorithm. \*\*\*p\textless0.001, \*p\textless0.05 in two-sided Wilcoxon tests. Box plots correspond to standard Tukey representation, with boxes indicating mean and interquartile range, and lines indicating smallest and largest values within 1.5 times of the 25th and 75th percentile, respectively. Individual data points are overlaid. No corrections for multiple testing were carried out.
+
+
+\invisiblesection{Supplementary Figure 2. Principal Component Analysis (PCA) of the top 20\% variable CpGs from all methylation datasets utilized in the present study for both discovery and validation purposes.}
+
+\begin{center}
+\includegraphics[trim=0cm 0cm 0cm 0, clip,width=0.9\textwidth]{./pdf/ED1_edited.pdf}
+\end{center}
+
+\textbf{Supplementary Figure 2. Principal Component Analysis (PCA) of the top 20\% variable CpGs from all methylation datasets utilized in the present study for both discovery and validation purposes.} Principal components 1 and 2 over all samples are shown by \textbf{a} immune cell (IC) fraction, \textbf{b} sample type, or \textbf{c} corresponding data set. \textbf{d} Principal components 1 and 2 of buccal samples by immune cell (IC) fraction, \textbf{e} sample type, or \textbf{f} corresponding data set. \textbf{g} Principal components of cervical samples by immune cell (IC) fraction, \textbf{h} sample type, or \textbf{i} corresponding data set. Principal components of blood samples by \textbf{j} neutrophil fraction, \textbf{k} sample type, or \textbf{l} data set. \textbf{m} Principal components of breast samples by immune cell (IC) fraction, \textbf{n} sample type, \textbf{o} or corresponding data set.
+
+\newpage
+
+
+\invisiblesection{Supplementary Figure 3. Differential methylation analysis in buccal, cervical, and blood discovery sets.}
+
+\begin{center}
+\includegraphics[trim=0cm 0cm 0cm 0, clip,width=0.9\textwidth]{./pdf/ED4.pdf}
+\end{center}
+
+\textbf{Supplementary Figure 3. Differential methylation analysis in buccal, cervical, and blood discovery sets. a} Histogram of the p-value distribution for methylation differences in CpG sites (after adjustment for immune cell fraction and age) between the breast cancer (BC) case and control groups within the buccal sample discovery set. \textbf{b} Manhattan plot for buccal EWAS results. Significant p values after Benjamini-Hochberg correction are shown in orange. \textbf{c} Histogram showing the p-value distribution for methylation differences in CpG sites (after adjustment for immune cell fraction and age) between the breast cancer (BC) case and control groups within the cervical sample discovery set. \textbf{d} Manhattan plot for cervical EWAS results. Significant p values after Benjamini-Hochberg correction are shown in orange. \textbf{e} Histogram showing the p-value distribution for methylation differences in CpG sites (after adjustment for immune cell fraction and age) between the breast cancer (BC) case and control groups within the blood sample discovery set. \textbf{f} Manhattan plot for blood EWAS results. No results remained significant after Benjamini-Hochberg correction. Note, significance thresholds for buccal, cervical and blood samples are different as Benjamini-Hochberg correction was applied, a method for controlling the false discovery rate using a ‘step-up’ method. Alternative approaches, such as correction generic thresholds such as p\textless10-5 have also been proposed and could alternatively be applied.
+
+\newpage
+
+\invisiblesection{Supplementary Figure 4. Relation to island and gene group of differentially methylated probes between breast cancer cases and controls}
+
+\begin{center}
+\includegraphics[trim=0cm 0cm 0cm 0, clip,width=0.9\textwidth]{./pdf/ED5.pdf}
+\end{center}
+
+\textbf{Supplementary Figure 4. Relation to island and gene group of differentially methylated probes between breast cancer cases and controls. a} Relation to island of differentially methylated probes (significant after Benjamini-Hochberg correction) between breast cancer cases and controls in buccal samples. \textbf{b} Relation to island of differentially methylated probes between breast cancer cases and controls in cervical samples (significant after Benjamini-Hochberg correction). \textbf{c} Gene group of differentially methylated probes between breast cancer cases and controls in buccal samples (significant post Benjamini-Hochberg correction). \textbf{d} Gene group of differentially methylated probes between breast cancer cases and controls in cervical samples (significant post Benjamini-Hochberg
+correction).
+
+\newpage
+
+\invisiblesection{Supplementary Figure 5. Comparison of methylated signals in epithelial and immune fractions and differential methylated region analysis in buccal and cervical cells.}
+
+\begin{center}
+\includegraphics[trim=0cm 0cm 0cm 0, clip,width=0.9\textwidth]{./pdf/ED6.pdf}
+\end{center}
+
+\textbf{Supplementary Figure 5. Comparison of methylated signals in epithelial and immune fractions and differential methylated region analysis in buccal and cervical cells. a} Mean delta beta values between BC cases and controls in pure inferred epithelial cells for overlapping DMPs within the buccal and cervical discovery sets, prior to implementing multiple testing correction. Annotated is the corresponding odds ratio [95\% confidence interval]. \textbf{b} Mean delta beta values between BC cases and controls in pure inferred immune cells.for overlapping DMPs within the buccal and cervical discovery sets, prior to implementing multiple testing correction. Annotated is the corresponding odds ratio [95\% confidence interval]. \textbf{c} Differentially methylated regions (DMRs) in buccal (blue) and cervical (red) samples within the discovery sets. \textbf{d} Examples of DMRs overlapping between buccal (dashed lines) and cervical samples (solid lines). Mean methylation beta values in controls (blue) and BC cases (red) are visualized. NCK1/RP11-85F14.1 (p=0.00094 for buccal samples; p=0.015 for cervical samples) and CCDC88C (p=0.0072 for buccal samples; p=0.012 for cervical samples) exhibit opposing differential methylation between cases and controls in buccal and cervical samples (i.e., hypermethylation in BC cases in cervical samples and hypomethylation in BC cases in buccal samples), whereas RP11-551L14.1 (p=0.011 for buccal samples; 0.0002 for cervical samples) and LTBP4 (p=0.002 for buccal samples. p=0.0045 for cervical samples) show the same directionality of differential methylation in the two samples.
+
+\newpage
+
+\invisiblesection{Supplementary Figure 6. Functional enrichment analysis of differentially methylated positions (adjusted p-value after BH correction: \textless0.05) identified between breast cancer cases and controls in the buccal discovery Set (585 CpGs).}
+
+\begin{center}
+\includegraphics[trim=0cm 0cm 0cm 0, clip,width=0.9\textwidth]{./pdf/ED7.pdf}
+\end{center}
+
+\textbf{Supplementary Figure 6. Functional enrichment analysis of differentially methylated positions (adjusted p-value after BH correction: \textless0.05) identified between breast cancer cases and controls in the buccal discovery Set (585 CpGs).} The figure illustrates the top 10 enriched biological processes. There were no significantly enriched molecular or cellular cellular compartments.
+
+\newpage
+
+\invisiblesection{Supplementary Figure 7. Functional enrichment analysis of differentially methylated positions (adjusted p-value after BH correction: \textless0.05) identified between breast cancer cases and controls in the cervical discovery Set (21,614 CpGs).}
+
+\begin{center}
+\includegraphics[trim=0cm 0cm 0cm 0, clip,width=0.9\textwidth]{./pdf/ED8.pdf}
+\end{center}
+
+\textbf{Supplementary Figure 7. Functional enrichment analysis of differentially methylated positions (adjusted p-value after BH correction: \textless0.05) identified between breast cancer cases and controls in the cervical discovery Set (21,614 CpGs). a} The figure illustrates the top 10 enriched biological processes, \textbf{b} Molecular functions, and \textbf{c} cellular compartments.
+
+\newpage
+
+
+\invisiblesection{Supplementary Figure 8. Training of DNAme indices distinguishing breast cancer cases from controls based on three tissue types.}
+
+\begin{center}
+\includegraphics[trim=0cm 0cm 0cm 0, clip,width=0.9\textwidth]{./pdf/ED2.pdf}
+\end{center}
+
+\textbf{Supplementary Figure 8. Training of DNAme indices distinguishing breast cancer cases from controls based on three tissue types. a} Training of the WID-buccal-BC, demonstrating the area under the receiver operating characteristic curve (AUROC) in the internal validation or \textbf{b} out-of-bag estimates as a number of inputs. \textbf{c} Training of the WID-cervical-BC, demonstrating the area under the receiver operating characteristic curve (AUROC) in the internal validation or \textbf{d} out-of-bag estimates as a number of inputs. \textbf{e} Training of the WID-blood-BC, demonstrating the area under the receiver operating characteristic curve (AUROC) in the internal validation or \textbf{f} out-of-bag estimates as a number of inputs.
+
+\newpage
+
+\invisiblesection{Supplementary Figure 9. ROC curves of unadjusted WID-buccal-, -cervical-, and -blood-BC indices in the validation sets}
+
+\begin{center}
+\includegraphics[trim=0cm 0cm 0cm 0, clip,width=0.9\textwidth]{./pdf/ED9.pdf}
+\end{center}
+
+\textbf{Supplementary Figure 9. ROC curves of unadjusted WID-buccal-, -cervical-, and -blood-BC indices in the validation sets. a} ROC curves of the WID-buccal-BC index in the validation set (black) and stratified by median immune cell proportion (turquoise and blue), \textbf{b} menopausal status (turquoise and blue), or \textbf{c} median age at menarche (turquoise and blue). \textbf{d} ROC curves of the WID-cervical-BC index in the validation set (black) and stratified by median immune cell proportion (turquoise and blue), \textbf{e} stratified by menopausal status (turquoise and blue), or \textbf{f} median age at menarche (turquoise and blue). \textbf{g} ROC curves of the WID-blood-BC index in GSE237036 (black) and stratified by median neutrophil proportion (turquoise and blue).
+
+Abbreviations: BC, breast cancer. WID, women's cancer risk identification. AUC, area under the receiver operating characteristic.
+
+\newpage
+
+\invisiblesection{Supplementary Figure 10. Assessment of the association of the WID-buccal-BC and WID-cervical-BC index (adjusted for age and IC) with epidemiological factors.}
+
+\begin{center}
+\includegraphics[trim=0cm 0cm 0cm 0, clip,width=0.9\textwidth]{./pdf/ED10.pdf}
+\end{center}
+
+\textbf{Supplementary Figure 10. Assessment of the association of the WID-buccal-BC and WID-cervical-BC index (adjusted for age and IC) with epidemiological factors. a} Association of the WID-buccal-BC index with age at menarche, \textbf{b} family history of breast cancer, \textbf{c} age at first live birth, \textbf{d} menopausal status, \textbf{e} hormone replacement therapy (post-menopausal women only), or \textbf{f} nodal status. \textbf{g} Association of the WID-cervical-BC index with age at menarche, \textbf{h} family history of breast cancer, \textbf{i} age at first live birth, \textbf{j} menopausal status, \textbf{k} hormone replacement therapy (post-menopausal women only), or \textbf{l} nodal status. \*\*\*\*p\textless0.0001, \*\*\*p\textless0.001, \*\*p\textless0.01 in two-sided Wilcoxon tests. Box plots correspond to standard Tukey representation, with boxes indicating mean and interquartile range, and lines indicating smallest and largest values within 1.5 times of the 25th and 75th percentile, respectively. No corrections for multiple adjustment were carried out.
+
+\newpage
+
+
+\invisiblesection{Supplementary Figure 11. WID-buccal-BC and WID-cervical-BC performance in blood samples.}
+
+\begin{center}
+\includegraphics[trim=0cm 0cm 0cm 0, clip,width=0.9\textwidth]{./pdf/ED11.pdf}
+\end{center}
+
+\textbf{Supplementary Figure 11. WID-buccal-BC and WID-cervical-BC performance in blood samples. a} Distribution of the WID-buccal-BC index with respect to neutrophil proportion in the FORECEE (Blood training) dataset. \textbf{b} ROC curve of the WID-buccal-BC index, adjusted for neutrophil proportion, in the FORECEE (Blood training) dataset. \textbf{c} Distribution of the WID-cervical-BC index with respect to neutrophil proportion in the FORECEE (Blood training) dataset. \textbf{d} ROC curve of the WID-cervical-BC index, adjusted for neutrophil proportion, in the FORECEE (Blood training) dataset. \textbf{e} Distribution of the WID-buccal-BC index with respect to neutrophil proportion in GSE237036. \textbf{f} ROC curve of the WID-buccal-BC index, adjusted for neutrophil proportion, in GSE237036. \textbf{g} Distribution of the WID-cervical-BC index with respect to neutrophil proportion in GSE237036. \textbf{h} ROC curve of the WID-cervical-BC index, adjusted for neutrophil proportion, in GSE237036.

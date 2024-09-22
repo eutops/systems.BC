@@ -64,6 +64,10 @@ Raw data are deposited in EGA and cannot be provided openly due to data protecti
 
 However, summary data for plotting are provided in the dataframes-plotting folder. These can be used to reproduce the figures.
 
+### Analysis flow:
+
+1. Initially, an EWAS is run in each sample type (1-ewas)
+
 ### Expected output
 
 Depending on the script run, expected output should be raw figures underlying the manuscripts. The run time will depend on the figure but should typically be less than a few seconds.

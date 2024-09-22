@@ -1,6 +1,6 @@
 ---
 title: "Enrichment analysis - missMethyl and clusterProfiler"
-output: html_notebook
+output: html_document
 ---
 
 # Settings
@@ -16,8 +16,6 @@ library(ReactomePA)
 here::i_am("1-ewas/1-buccal/3-dmr-visualisation.Rmd")
 ```
 
-
-
 # Load DMPs
 
 ```{r}
@@ -29,10 +27,8 @@ buccal <- readRDS(here("1-ewas", "1-buccal", "delta-beta.Rds")) |>
 sigCpGs <- subset(buccal, padj < 0.05, select = cg)
 sigCpGs <- dplyr::pull(sigCpGs,cg)
 
-
 # Write DMPs to .txt file for eFORGE upload
 writeLines(sigCpGs, here("1-ewas", "1-buccal", "dmps.txt"))
-
 ```
 
 
@@ -53,6 +49,7 @@ load(here("1-ewas","1-buccal","2-output","gsea-missMethyl.Rdata"))
 topGSA(gst.go)
 topGSA(gst.kegg)
 ```
+
 ## Overlap buccal - cervical
 
 ```{r}
@@ -80,10 +77,7 @@ topGSA(gst.go)
 topGSA(gst.kegg)
 ```
 
-
 # ClusterProfiler
-
-Only bp enriched.
 
 ```{r}
 anno <- getAnnotation(IlluminaHumanMethylationEPICanno.ilm10b4.hg19)
@@ -94,8 +88,7 @@ universe <- unique(anno$gene)
 universe <- universe[universe != ""] # remove empty (for those CpGs not in genes)
 ```
 
-
-# Buccal only
+## Buccal only
 
 ```{r}
 buccal <- readRDS(here("1-ewas", "1-buccal", "delta-beta.Rds")) |> 
@@ -156,9 +149,10 @@ save(bp, mf, cc, epi_hypo_react_all, file=here("1-ewas","1-buccal","2-output","g
 # Visualize
 bp_dot <- enrichplot::dotplot(bp) 
 ```
-## Overlap buccal - cervical
 
-Does not yield any enrichments. 
+Only BP enriched.
+
+## Overlap buccal - cervical
 
 ```{r}
 cervical <- readRDS(here("1-ewas", "2-cervical", "delta-beta.Rds")) |> 
@@ -215,3 +209,6 @@ epi_hypo_react_all <- enrichPathway(goi_entrez$ENTREZID, organism = "human",
                                     pAdjustMethod = "BH", 
                                     readable = T,
                                     minGSSize = 3)
+```
+
+Does not yield any enrichments. 
