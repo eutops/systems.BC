@@ -36,7 +36,7 @@ source(here("0-data", "src", "index_sox2.R"))
 ```{r}
 load(here("0-data", "data.Rdata"))
 db_path <- fs::path_expand('~/Dropbox')
-db_path <- "C:/Users/elisa/EUTOPS Team Dropbox/Bente Theeuwes"
+# db_path <- "C:/Users/elisa/EUTOPS Team Dropbox/Bente Theeuwes"
 ```
 
 # Script to compute three indices
@@ -217,7 +217,7 @@ roc.test(roc_buccal,roc_cervical, are.paired=T)
 load(here(db_path, "data", "blood", "GSE237036_wang", "beta_merged.Rdata"))
 load(here(db_path, "data", "blood", "GSE237036_wang", "GSE237036_pheno_trimmed.Rdata"))
 
-load(file.path(db_path,"eca/bc-blood/Manuscript/0-data/cent12CT.m.rda")) # epiDISH reference matrix
+# load(file.path(db_path,"eca/bc-blood/MattersArising_BloodBC/data/cent12CT.m.rda")) # epiDISH reference matrix
 
 # Check if pheno and beta are in the same order
 if(!identical(pheno_trimmed$basename, colnames(beta_merged))){
@@ -225,6 +225,7 @@ if(!identical(pheno_trimmed$basename, colnames(beta_merged))){
 }else{cat("Basename pheno and beta in the same order")}
 
 # EpiDISH 
+library(EpiDISH)
 data(cent12CT.m)
 frac.m <- hepidish(beta.m = beta_merged,
                    ref1.m = centEpiFibIC.m,
@@ -250,7 +251,7 @@ blood_val <- adjust_neutro(blood_val,indices=c("WID_blood_BC","WID_buccal_BC","W
 save(blood_val, file=here("0-data","dataframes-plotting","blood_validation.Rdata"))
 
 
-blood_wang_val |>
+blood_val |>
   ggplot(aes(x = type,
              y = WID_blood_BC)) +
   geom_boxplot()

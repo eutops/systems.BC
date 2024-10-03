@@ -710,6 +710,9 @@ j2 <- ggplot(blood_val,
 
 j2
 
+# P value
+# wilcox.test(blood_val[blood_val$type=='Control',]$WID_blood_BC_adj, blood_val[blood_val$type!='Control',]$WID_blood_BC_adj)
+
 # Save coordinates
 coord_save_excel(j2, coordPath)
 ```
@@ -2136,7 +2139,6 @@ pagedown::chrome_print(file.path(outPath,"ST2.html"), output = file.path(outPath
 ## a) Buccal: differences in IC
 
 ```{r}
-
 subset_data <- subset(data, set %in% c("discovery_buccal", "validation_buccal"))
 subset_data$type <- factor(subset_data$type, levels=c("Control","BC case"))
 
@@ -2156,8 +2158,8 @@ ED1a <- ggplot(data=subset_data, aes(x = type,
   scale_fill_manual(values = c(colour.Control, colour.Breast)) +
   labs(x = "", y = "Immune Cell Fraction", title= "Buccal") + 
   ggpubr::stat_compare_means(comparisons = list(c("BC case","Control")),
-                             label = 'p.signif', label.y = c(0.75), vjust = +0.1,size = 3.2) +
-  facet_wrap(~set,labeller = as_labeller(c(`discovery_buccal` = "Discovery\nSet", `validation_buccal` = "External\nValidation Set"))) + 
+                             label = 'p.format', label.y = c(0.75), vjust = +0.1,size = 3.2) +
+  facet_wrap(~set,labeller = as_labeller(c(`discovery_buccal` = "Discovery\nSet", `validation_buccal` = "Validation\nSet"))) + 
        theme(strip.text.x = element_text(size = 8))
 
 ED1a
@@ -2168,7 +2170,6 @@ ED1a
 
 
 ```{r}
-
 subset_data <- subset(data, set %in% c("discovery_cervical", "validation_cervical"))
 subset_data$type <- factor(subset_data$type, levels=c("Control","BC case"))
 
@@ -2189,20 +2190,20 @@ ED1b <- ggplot(data=subset_data, aes(x = type,
   scale_fill_manual(values = c(colour.Control, colour.Breast)) +
   labs(x = "", y = "Immune Cell Fraction", title= "Cervical") + 
   ggpubr::stat_compare_means(comparisons = list(c("BC case","Control")),
-                             label = 'p.signif', label.y = c(0.9), vjust = +0.1,size = 3.2) +
-  facet_wrap(~set,labeller = as_labeller(c(`discovery_cervical` = "Discovery\nSet", `validation_cervical` = "External\nValidation Set"))) + 
+                             label = 'p.format', label.y = c(0.9), vjust = +0.1,size = 3.2) +
+  facet_wrap(~set,labeller = as_labeller(c(`discovery_cervical` = "Discovery\nSet", `validation_cervical` = "Validation\nSet"))) + 
        theme(strip.text.x = element_text(size = 8))
 
 ED1b
-
 
 ```
 
 ## c) Blood: differences in Neutro
 
 ```{r}
-
-subset_data <- subset(data, set %in% c("discovery_blood") | subset %in% c("GSE237036"))
+subset_data <- subset(data, set %in% c("discovery_blood"))
+subset_data2 <- blood_val
+subset_data <- plyr::rbind.fill(subset_data, blood_val)
 subset_data$type <- factor(subset_data$type, levels=c("Control","BC case"))
 
 ED1c <- ggplot(data=subset_data, aes(x = type,
@@ -2221,19 +2222,16 @@ ED1c <- ggplot(data=subset_data, aes(x = type,
   scale_fill_manual(values = c(colour.Control, colour.Breast)) +
   labs(x = "", y = "Neutrophil Fraction", title= "Blood")  + 
   ggpubr::stat_compare_means(comparisons = list(c("BC case","Control")),
-                             label = 'p.signif', label.y = c(0.85), vjust = +0.1,size = 3.2) +
-  facet_wrap(~set,labeller = as_labeller(c(`discovery_blood` = "Discovery\nSet", `validation_blood` = "GSE237036"))) + 
+                             label = 'p.format', label.y = c(0.85), vjust = +0.1,size = 3.2) +
+  facet_wrap(~set,labeller = as_labeller(c(`discovery_blood` = "Discovery\nSet", `validation_blood` = "Validation\nSet"))) + 
        theme(strip.text.x = element_text(size = 8))
 
 ED1c
-
-
 ```
 
 ## d) Buccal: Cell type boxplot BC / control.
 
 ```{r}
-
 subset_data <- subset(data, set %in% c("discovery_buccal", "validation_buccal"))
 subset_data$type <- factor(subset_data$type, levels=c("Control","BC case"))
 
@@ -2241,7 +2239,7 @@ subset_data$type <- factor(subset_data$type, levels=c("Control","BC case"))
 labs <- c("Basophils", "CD4T", "CD8T", "Eosinophils", "Epithelial", "Fibroblasts", "Monocytes", "Neutrophils", "NK cells")
 names(labs) <- c("hepidish_B", "hepidish_CD4T", "hepidish_CD8T", "hepidish_Eosino", "hepidish_Epi", "hepidish_Fib", "hepidish_Mono", "hepidish_Neutro", "hepidish_NK")
 
-labs_names <- c("Discovery Set", "External Validation Set")
+labs_names <- c("Discovery Set", "Validation Set")
 names(labs_names) <- c("discovery_buccal", "validation_buccal")
 
 # Define the columns you want to gather
@@ -2261,7 +2259,7 @@ ED1d <- ggplot(subset_data_long, aes(x = type, y = Fraction, fill = type)) +
                              label = 'p.signif',
                              hide.ns = T, label.y = c(0.9), vjust = +0.7) +
   theme_minimal() +
-  theme(legend.position = "",  # Move the legend to the bottom
+  theme(legend.position = "none",  # Move the legend to the bottom
         legend.direction = "horizontal",
         panel.grid.major = element_blank(),
     panel.grid.minor = element_blank(),
@@ -2277,7 +2275,6 @@ ED1d
 ##  e) Cervical: Cell type boxplot BC / control.
 
 ```{r}
-
 subset_data <- subset(data, set %in% c("discovery_cervical", "validation_cervical"))
 subset_data$type <- factor(subset_data$type, levels=c("Control","BC case"))
 
@@ -2285,7 +2282,7 @@ subset_data$type <- factor(subset_data$type, levels=c("Control","BC case"))
 labs <- c("Basophils", "CD4T", "CD8T", "Eosinophils", "Epithelial", "Fibroblasts", "Monocytes", "Neutrophils", "NK cells")
 names(labs) <- c("hepidish_B", "hepidish_CD4T", "hepidish_CD8T", "hepidish_Eosino", "hepidish_Epi", "hepidish_Fib", "hepidish_Mono", "hepidish_Neutro", "hepidish_NK")
 
-labs_names <- c("Discovery Set", "External Validation Set")
+labs_names <- c("Discovery Set", "Validation Set")
 names(labs_names) <- c("discovery_cervical", "validation_cervical")
 
 # Define the columns you want to gather
@@ -2305,7 +2302,7 @@ ED1e <- ggplot(subset_data_long, aes(x = type, y = Fraction, fill = type)) +
                              label = 'p.signif',
                              hide.ns = T, label.y = c(0.9), vjust = +0.7) +
   theme_minimal() +
-  theme(legend.position = "",  # Move the legend to the bottom
+  theme(legend.position = "none",  # Move the legend to the bottom
         legend.direction = "horizontal",
         panel.grid.major = element_blank(),
     panel.grid.minor = element_blank(),
@@ -2319,14 +2316,16 @@ ED1e
 ##  f) Blood: Cell type boxplot BC / control.
 
 ```{r}
-subset_data <- subset(data, set %in% c("discovery_blood") | subset %in% c("GSE237036"))
+subset_data <- subset(data, set %in% c("discovery_blood"))
+subset_data2 <- blood_val
+subset_data <- plyr::rbind.fill(subset_data, blood_val)
 subset_data$type <- factor(subset_data$type, levels=c("Control","BC case"))
 
 # Define the new facet labels
 labs <- c("Basophils", "CD4T", "CD8T", "Eosinophils", "Epithelial", "Fibroblasts", "Monocytes", "Neutrophils", "NK cells")
 names(labs) <- c("hepidish_B", "hepidish_CD4T", "hepidish_CD8T", "hepidish_Eosino", "hepidish_Epi", "hepidish_Fib", "hepidish_Mono", "hepidish_Neutro", "hepidish_NK")
 
-labs_names <- c("Discovery Set", "GSE237036")
+labs_names <- c("Discovery Set", "Validation Set")
 names(labs_names) <- c("discovery_blood", "validation_blood")
 
 # Define the columns you want to gather
@@ -2346,7 +2345,7 @@ ED1f <- ggplot(subset_data_long, aes(x = type, y = Fraction, fill = type)) +
                              label = 'p.signif',
                              hide.ns = T, label.y = c(0.9), vjust = +0.7) +
   theme_minimal() +
-  theme(legend.position = "bottom",  # Move the legend to the bottom
+  theme(legend.position = "none",  # Move the legend to the bottom
         legend.direction = "vertical",
         panel.grid.major = element_blank(),
     panel.grid.minor = element_blank(),
@@ -2539,9 +2538,6 @@ pca_all.data <- ggplot(data = pcs, aes(x = PC1, y = PC2, col=subset)) +
 
 ```{r}
 load(here("0-data","dataframes-plotting","pca_all_buccal.Rdata"))
-
-
-
 
 # Recode some columns for plotting and consistency
 pcs <- pcs |> mutate(subset=recode(subset, 'external_validation'='Buccal validation set (EPIC)', 
@@ -2798,7 +2794,6 @@ pca_blood.sample <- ggplot(data = pcs, aes(x = PC1, y = PC2, color = type)) +
 ## m-o) PCA of all breast data
 
 ```{r}
-
 load(here("0-data","dataframes-plotting","pca_all_breast.Rdata"))
 
 # Recode some columns for plotting and consistency
@@ -3956,6 +3951,7 @@ Not included:
 ),
               map_signif_level = TRUE,
               textsize = 3, vjust = -0.3)
+              
 ```{r}
 
 temp <- buccal_val[which(!is.na(buccal_val$Pregnancy_age_1st_live_born)),]

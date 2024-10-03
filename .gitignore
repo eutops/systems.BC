@@ -16,6 +16,7 @@
 *.tex
 *.aux
 *.log
+*.toc
 temp/*
 .DS_Store
 .Rhistory
