@@ -30,39 +30,17 @@ Chiara M. S. Herzog, Bente Theeuwes, Allison Jones, Iona Evans, Line Bjørge, Mi
 \tableofcontents
 
 \newcommand\invisiblesection[1]{%
-  \refstepcounter{section}%
-  \addcontentsline{toc}{section}{\protect\numberline{\thesection}#1}%
+  \refstepcounter{subsection}%
+  \addcontentsline{toc}{subsection}{#1}%
   \sectionmark{#1}}
 
 \newpage
 
 \section{Supplementary Tables}
 
-\invisiblesection{Supplementary Table 1. Breast cancer EWAS analysis results in buccal samples.}
-\textbf{Supplementary Table 1. Breast cancer EWAS analysis results in buccal samples.}
+\invisiblesection{Supplementary Table 1. BRCA1/2 mutation carrier dataset overview. }
 
-Statistical test results are based on linear models and estimation of delta-beta values (see methods). Provided as .csv file at 10.5281/zenodo.11397663.
-
-\invisiblesection{Supplementary Table 2. Breast cancer EWAS analysis results in cervical samples.}
-\textbf{Supplementary Table 2. Breast cancer EWAS analysis results in cervical samples.}
-
-Statistical test results are based on linear models and estimation of delta-beta values (see methods). Provided as .csv file at 10.5281/zenodo.11397663.
-
-\invisiblesection{Supplementary Table 3. Breast cancer EWAS analysis results in blood samples.}
-\textbf{Supplementary Table 3. Breast cancer EWAS analysis results in blood samples.}
-
-Statistical test results are based on linear models and estimation of delta-beta values (see methods). Provided as .csv file at 10.5281/zenodo.11397663.
-
-\invisiblesection{Supplementary Table 4. Differentially methylated regions (DMRs) significantly associated with breast cancer in both buccal and cervical samples.}
-\textbf{Supplementary Table 4. Differentially methylated regions (DMRs) significantly associated with breast cancer in both buccal and cervical samples.}
-
-Provided as .csv file.
-
-\newpage
-
-\invisiblesection{Supplementary Table 5. BRCA1/2 mutation carrier dataset overview.}
-
-\textbf{Supplementary Table 5. BRCA1/2 mutation carrier dataset overview.}
+\textbf{Supplementary Table 1. BRCA1/2 mutation carrier dataset overview.}
 
 \begin{center}
 \includegraphics[trim=1cm 0cm 1cm 0, clip,width=0.9\textwidth]{./pdf/ST1.pdf}
@@ -71,9 +49,9 @@ Provided as .csv file.
 \newpage
 
 
-\invisiblesection{Supplementary Table 6. Breast tissue DNA methylation dataset numbers and characteristics.}
+\invisiblesection{Supplementary Table 2. Breast tissue DNA methylation dataset numbers and characteristics.}
 
-\textbf{Supplementary Table 6. Breast tissue DNA methylation dataset numbers and characteristics.}
+\textbf{Supplementary Table 2. Breast tissue DNA methylation dataset numbers and characteristics.}
 
 \begin{center}
 \includegraphics[trim=1cm 9cm 1cm 0, clip,width=0.9\textwidth]{./pdf/ST2.pdf}

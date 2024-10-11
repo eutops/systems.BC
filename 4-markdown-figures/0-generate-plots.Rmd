@@ -1727,9 +1727,9 @@ ggsave(file.path(outPath,"F4.pdf"), width = pdf_width, height = pdf_height, comp
 # ggsave(file.path(jpgPath,"F4.jpg"), width = pdf_width, height = pdf_height, compiled)
 ```
 
-#=========SUPPLEMENTARY TABLES========
+#=========SUPPLEMENTARY DATA========
 
-# ST1: Epigenome-wide study buccal samples
+# SD1: Epigenome-wide study buccal samples
 .csv file
 
 ```{r}
@@ -1772,7 +1772,7 @@ write.csv(result, file.path(supPath, "ST1.csv"), row.names=FALSE)
 
 ```
 
-# ST2: Epigenome-wide study cervical samples
+# SD2: Epigenome-wide study cervical samples
 
 .csv file
 
@@ -1814,14 +1814,16 @@ write.csv(result, file.path(supPath, "ST2.csv"), row.names=FALSE)
 # write.csv(result[result$padj<0.05,], file.path(supPath, "ST4_cropped.csv"), row.names=FALSE)
 ```
 
-# ST3: Epigenome-wide study cervical samples
+# SD3: Epigenome-wide study cervical samples
 .csv file
 
 ```{r}
 blood <- readRDS(here("1-ewas", "3-blood", "delta-beta.Rds")) |> 
   as.data.frame() |> 
   dplyr::mutate(padj = p.adjust(type, method = 'BH')) |> 
-  tibble::rownames_to_column('cg')
+  tibble::rownames_to_column('cg') |> 
+  dplyr::rename(db_neutrophil = db_immune,
+                db_other = db_epithelial)
 
 
 # Get annotation
@@ -1835,7 +1837,7 @@ anno <- match(blood$cg, man.epic$Name)
 
 # Extract info delta-beta
 tmp <- man.epic |>
-  select(Name, chr, pos, UCSC_RefGene_Name, UCSC_RefGene_Group, Relation_to_Island)
+  dplyr::select(Name, chr, pos, UCSC_RefGene_Name, UCSC_RefGene_Group, Relation_to_Island)
 
 # Subset the selected columns based on the 'anno' indices
 result <- cbind(blood,tmp[anno, ])
@@ -1843,16 +1845,15 @@ result <- cbind(blood,tmp[anno, ])
 # rename column
 result$pvalue <- result$type
 
-
 # Select relevant columns for supplement
 result <- result |>
-  select(cg, chr, pos, dir_type, db_epithelial, db_immune, pvalue, padj, UCSC_RefGene_Name, UCSC_RefGene_Group, Relation_to_Island)
+  dplyr::select(cg, chr, pos, dir_type, db_neutrophil, db_other, pvalue, padj, UCSC_RefGene_Name, UCSC_RefGene_Group, Relation_to_Island)
 
 # Save to .csv
 write.csv(result, file.path(supPath, "ST3.csv"), row.names=FALSE)
 ```
 
-# ST4: Overlapping genomic regions, buccal and cervical
+# SD4: Overlapping genomic regions, buccal and cervical
 
 ```{r}
 # Load data
@@ -1886,9 +1887,9 @@ overlaps$meandiff_cervical <- overlaps2$meandiff
 write.csv(overlaps, file.path(supPath, "ST6.csv"), row.names=FALSE)
 ```
 
+#=========SUPPLEMENTARY TABLES========
 
-
-# ST5: BRCA table
+# ST1: BRCA table
 
 ```{r}
 theme_gtsummary_journal(journal = "jama")
@@ -1970,7 +1971,7 @@ t1 |> gtsave(file.path(outPath,"ST1.html"))
 pagedown::chrome_print(file.path(outPath,"ST1.html"), output = file.path(outPath,"ST1.pdf"))
 ```
 
-# ST6: Breast datasets
+# ST2: Breast datasets
 
 ```{r}
 theme_gtsummary_journal(journal = "jama")
